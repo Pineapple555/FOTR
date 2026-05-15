@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WMS · INTENT</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f0d;
+  --surface: #161614;
+  --surface2: #1e1e1b;
+  --line: #252520;
+  --line2: #2e2e28;
+  --ink: #e8e3d8;
+  --muted: #6b6760;
+  --dim: #4a4740;
+  --accent: #8fbe6a;
+  --accent-dim: #3a5228;
+  --amber: #c8b882;
+  --blue: #7a9fb8;
+  --red: #c87a7a;
+  --orange: #c89a6a;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{background:var(--bg);color:var(--ink);font-family:'DM Mono',monospace;font-weight:300;min-height:100vh;display:flex;flex-direction:column}
+
+/* SIDEBAR */
+.sidebar{width:220px;min-height:100vh;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:50}
+.sidebar-logo{padding:28px 24px 20px;border-bottom:1px solid var(--line)}
+.sidebar-logo .brand{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:1.3rem;color:var(--ink);letter-spacing:-0.02em}
+.sidebar-logo .sub{font-size:9px;letter-spacing:0.18em;color:var(--muted);margin-top:3px;text-transform:uppercase}
+.nav{flex:1;padding:20px 0}
+.nav-section{font-size:8px;letter-spacing:0.22em;color:var(--muted);text-transform:uppercase;padding:14px 24px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 24px;cursor:pointer;font-size:11px;letter-spacing:0.06em;color:var(--muted);transition:all 0.15s;border-left:2px solid transparent}
+.nav-item:hover{color:var(--ink);background:var(--surface2)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--surface2)}
+.nav-item .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sidebar-foot{padding:16px 24px;border-top:1px solid var(--line);font-size:9px;color:var(--muted);letter-spacing:0.08em}
+
+/* MAIN */
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:var(--surface);position:sticky;top:0;z-index:40}
+.topbar-title{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;color:var(--ink)}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.badge-loc{font-size:9px;letter-spacing:0.14em;padding:3px 10px;border:1px solid var(--line2);color:var(--muted);text-transform:uppercase;border-radius:2px}
+.btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:8px 16px;border:1px solid var(--line2);background:none;color:var(--ink);cursor:pointer;transition:all 0.15s;border-radius:0}
+.btn:hover{background:var(--surface2)}
+.btn.primary{background:var(--accent);color:#0f0f0d;border-color:var(--accent)}
+.btn.primary:hover{opacity:0.88}
+
+/* CONTENT */
+.content{padding:28px 32px;flex:1}
+
+/* VIEWS */
+.view{display:none}
+.view.active{display:block}
+
+/* STAT CARDS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.stat{background:var(--surface);border:1px solid var(--line);padding:18px 20px}
+.stat-label{font-size:9px;letter-spacing:0.18em;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+.stat-val{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;color:var(--ink);line-height:1}
+.stat-sub{font-size:9px;color:var(--muted);margin-top:6px}
+.stat.alert .stat-val{color:var(--red)}
+.stat.ok .stat-val{color:var(--accent)}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.table-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+.table-title{font-size:10px;letter-spacing:0.16em;color:var(--muted);text-transform:uppercase}
+.table-actions{display:flex;gap:8px;align-items:center}
+.search-box{background:var(--surface2);border:1px solid var(--line);color:var(--ink);font-family:'DM Mono',monospace;font-size:11px;padding:6px 12px;outline:none;width:180px;letter-spacing:0.04em}
+.search-box::placeholder{color:var(--muted)}
+.filter-select{background:var(--surface2);border:1px solid var(--line);color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;padding:6px 10px;outline:none;letter-spacing:0.06em;cursor:pointer}
+
+table{width:100%;border-collapse:collapse}
+thead th{font-size:9px;letter-spacing:0.18em;color:var(--muted);text-transform:uppercase;padding:10px 16px;text-align:left;border-bottom:1px solid var(--line);background:var(--surface2);font-weight:400}
+tbody tr{border-bottom:1px solid var(--line);transition:background 0.12s}
+tbody tr:hover{background:var(--surface2)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:12px 16px;font-size:11px;letter-spacing:0.04em;color:var(--ink)}
+tbody td.muted{color:var(--muted)}
+tbody td.mono{font-size:10px;color:var(--muted)}
+
+/* STOCK BADGE */
+.stock-num{display:inline-block;padding:2px 8px;font-size:10px;border-radius:2px;font-weight:400}
+.stock-ok{background:var(--accent-dim);color:var(--accent)}
+.stock-low{background:#3d2020;color:var(--red)}
+.stock-zero{background:#2d1515;color:#c87a7a;font-weight:500}
+.stock-med{background:#3a3010;color:var(--amber)}
+
+/* STATUS BADGE */
+.status-badge{font-size:8px;letter-spacing:0.14em;text-transform:uppercase;padding:2px 7px;border-radius:2px}
+.status-active{background:var(--accent-dim);color:var(--accent)}
+.status-inactive{background:var(--line);color:var(--muted)}
+
+/* LOCATION TABS */
+.loc-tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--line)}
+.loc-tab{font-size:10px;letter-spacing:0.1em;padding:10px 18px;cursor:pointer;border:none;background:none;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;text-transform:uppercase}
+.loc-tab:hover{color:var(--ink)}
+.loc-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* MODAL */
+.modal-back{display:none;position:fixed;inset:0;background:rgba(8,8,6,0.9);z-index:200;align-items:center;justify-content:center}
+.modal-back.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--line2);width:100%;max-width:460px;padding:32px;position:relative;animation:mUp 0.2s ease}
+@keyframes mUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 8px}
+.modal-close:hover{color:var(--ink)}
+.modal h2{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:600;margin-bottom:6px}
+.modal-sub{font-size:10px;color:var(--muted);margin-bottom:24px;letter-spacing:0.06em}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:9px;letter-spacing:0.18em;color:var(--muted);text-transform:uppercase;margin-bottom:7px}
+.field select,.field input,.field textarea{width:100%;background:var(--bg);border:1px solid var(--line2);color:var(--ink);font-family:'DM Mono',monospace;font-size:12px;font-weight:300;padding:10px 12px;outline:none;transition:border-color 0.15s;border-radius:0;-webkit-appearance:none;letter-spacing:0.04em}
+.field select:focus,.field input:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:60px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+.modal-err{font-size:10px;color:var(--red);margin-top:10px;min-height:14px}
+
+/* HISTORIAL */
+.hist-item{display:flex;align-items:flex-start;gap:16px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.hist-item:last-child{border-bottom:none}
+.hist-dot{width:8px;height:8px;border-radius:50%;margin-top:3px;flex-shrink:0}
+.hist-dot.entrada{background:var(--accent)}
+.hist-dot.salida{background:var(--red)}
+.hist-dot.transferencia{background:var(--blue)}
+.hist-dot.ajuste{background:var(--amber)}
+.hist-body{flex:1}
+.hist-top{display:flex;justify-content:space-between;align-items:baseline}
+.hist-title{font-size:11px;color:var(--ink)}
+.hist-date{font-size:9px;color:var(--muted)}
+.hist-detail{font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:0.04em}
+.hist-qty{font-size:11px;font-weight:500}
+.hist-qty.pos{color:var(--accent)}
+.hist-qty.neg{color:var(--red)}
+
+/* ALERT BANNER */
+.alert-banner{background:#2d1515;border:1px solid #5a2020;padding:12px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;font-size:10px;color:var(--red);letter-spacing:0.06em}
+
+/* EMPTY */
+.empty{padding:48px;text-align:center;color:var(--muted);font-size:11px;letter-spacing:0.06em}
+
+/* TOOLTIP-LIKE row action */
+.row-action{font-size:9px;letter-spacing:0.12em;color:var(--accent);cursor:pointer;text-transform:uppercase;padding:3px 8px;border:1px solid var(--accent-dim);transition:all 0.15s}
+.row-action:hover{background:var(--accent-dim)}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">INTENT</div>
+    <div class="sub">WMS · Inventario</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Principal</div>
+    <div class="nav-item active" onclick="showView('dashboard',this)"><span class="dot"></span>Dashboard</div>
+    <div class="nav-item" onclick="showView('inventario',this)"><span class="dot"></span>Inventario</div>
+    <div class="nav-section">Movimientos</div>
+    <div class="nav-item" onclick="showView('entrada',this)"><span class="dot"></span>Registrar entrada</div>
+    <div class="nav-item" onclick="showView('salida',this)"><span class="dot"></span>Registrar salida</div>
+    <div class="nav-item" onclick="showView('transferencia',this)"><span class="dot"></span>Transferencia</div>
+    <div class="nav-section">Reportes</div>
+    <div class="nav-item" onclick="showView('historial',this)"><span class="dot"></span>Historial</div>
+  </nav>
+  <div class="sidebar-foot">fotr.cl · v1.0</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="topbar-right">
+      <span class="badge-loc" id="fecha-hoy"></span>
+      <button class="btn primary" onclick="openMovModal('entrada')">+ Entrada</button>
+      <button class="btn" onclick="openMovModal('salida')">− Salida</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div class="view active" id="view-dashboard">
+      <div class="stats">
+        <div class="stat ok">
+          <div class="stat-label">Productos activos</div>
+          <div class="stat-val" id="s-activos">—</div>
+          <div class="stat-sub">SKUs en catálogo</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Total unidades</div>
+          <div class="stat-val" id="s-total">—</div>
+          <div class="stat-sub">todas las ubicaciones</div>
+        </div>
+        <div class="stat alert">
+          <div class="stat-label">Stock bajo</div>
+          <div class="stat-val" id="s-bajo">—</div>
+          <div class="stat-sub">productos bajo mínimo</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Movimientos hoy</div>
+          <div class="stat-val" id="s-movhoy">—</div>
+          <div class="stat-sub">entradas + salidas</div>
+        </div>
+      </div>
+
+      <div id="alert-container"></div>
+
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title">Resumen de stock por ubicación</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>SKU</th>
+              <th>Bodega</th>
+              <th>Casa</th>
+              <th>Tienda 1</th>
+              <th>Tienda 2</th>
+              <th>Tienda 3</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="dash-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ INVENTARIO ══ -->
+    <div class="view" id="view-inventario">
+      <div class="loc-tabs">
+        <button class="loc-tab active" onclick="filterLoc('all',this)">Todas</button>
+        <button class="loc-tab" onclick="filterLoc('Bodega',this)">Bodega</button>
+        <button class="loc-tab" onclick="filterLoc('Casa',this)">Casa</button>
+        <button class="loc-tab" onclick="filterLoc('Tienda 1',this)">Tienda 1</button>
+        <button class="loc-tab" onclick="filterLoc('Tienda 2',this)">Tienda 2</button>
+        <button class="loc-tab" onclick="filterLoc('Tienda 3',this)">Tienda 3</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title">Stock de productos</span>
+          <div class="table-actions">
+            <input class="search-box" type="text" placeholder="buscar producto..." oninput="renderInventario()">
+            <select class="filter-select" onchange="renderInventario()">
+              <option value="all">Todos</option>
+              <option value="Activo">Activos</option>
+              <option value="Inactivo">Inactivos</option>
+            </select>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Estado</th>
+              <th>Producto</th>
+              <th>SKU</th>
+              <th>Variante</th>
+              <th>Stock</th>
+              <th>Mínimo</th>
+              <th>P. Venta</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="inv-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══ HISTORIAL ══ -->
+    <div class="view" id="view-historial">
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title">Historial de movimientos</span>
+          <div class="table-actions">
+            <input class="search-box" type="text" placeholder="buscar..." oninput="renderHistorial()">
+            <select class="filter-select" onchange="renderHistorial()">
+              <option value="all">Todos los tipos</option>
+              <option value="Entrada">Entrada</option>
+              <option value="Venta">Venta</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Consumo interno">Consumo interno</option>
+              <option value="Merma">Merma</option>
+              <option value="Ajuste">Ajuste</option>
+              <option value="Transferencia">Transferencia</option>
+            </select>
+          </div>
+        </div>
+        <div id="hist-list"><div class="empty">Sin movimientos registrados aún.</div></div>
+      </div>
+    </div>
+
+    <!-- ══ ENTRADA (view) ══ -->
+    <div class="view" id="view-entrada">
+      <div class="table-wrap" style="max-width:500px">
+        <div class="table-header"><span class="table-title">Registrar entrada de mercadería</span></div>
+        <div style="padding:24px">
+          <div class="field">
+            <label>Producto</label>
+            <select id="e-producto" onchange="updateSKU('e')">
+              <option value="">— selecciona —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>SKU</label>
+            <input type="text" id="e-sku" readonly style="color:var(--muted)">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Cantidad</label>
+              <input type="number" id="e-qty" min="1" placeholder="0">
+            </div>
+            <div class="field">
+              <label>Ubicación destino</label>
+              <select id="e-loc">
+                <option>Bodega</option><option>Casa</option><option>Tienda 1</option><option>Tienda 2</option><option>Tienda 3</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Proveedor / referencia</label>
+            <input type="text" id="e-ref" placeholder="opcional">
+          </div>
+          <div class="field">
+            <label>Nota</label>
+            <textarea id="e-nota" placeholder="opcional"></textarea>
+          </div>
+          <div class="modal-err" id="e-err"></div>
+          <div style="margin-top:4px">
+            <button class="btn primary" onclick="registrarMovimiento('Entrada')">Registrar entrada</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SALIDA (view) ══ -->
+    <div class="view" id="view-salida">
+      <div class="table-wrap" style="max-width:500px">
+        <div class="table-header"><span class="table-title">Registrar salida</span></div>
+        <div style="padding:24px">
+          <div class="field">
+            <label>Tipo de salida</label>
+            <select id="s-tipo">
+              <option>Venta</option>
+              <option>Marketing</option>
+              <option>Consumo interno</option>
+              <option>Merma</option>
+              <option>Ajuste</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Producto</label>
+            <select id="s-producto" onchange="updateSKU('s')">
+              <option value="">— selecciona —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>SKU</label>
+            <input type="text" id="s-sku" readonly style="color:var(--muted)">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Cantidad</label>
+              <input type="number" id="s-qty" min="1" placeholder="0">
+            </div>
+            <div class="field">
+              <label>Ubicación origen</label>
+              <select id="s-loc">
+                <option>Bodega</option><option>Casa</option><option>Tienda 1</option><option>Tienda 2</option><option>Tienda 3</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Referencia / pedido</label>
+            <input type="text" id="s-ref" placeholder="nº pedido, canal, etc.">
+          </div>
+          <div class="field">
+            <label>Nota</label>
+            <textarea id="s-nota" placeholder="opcional"></textarea>
+          </div>
+          <div class="modal-err" id="s-err"></div>
+          <div style="margin-top:4px">
+            <button class="btn primary" onclick="registrarMovimiento('Salida')">Registrar salida</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TRANSFERENCIA (view) ══ -->
+    <div class="view" id="view-transferencia">
+      <div class="table-wrap" style="max-width:500px">
+        <div class="table-header"><span class="table-title">Transferencia entre ubicaciones</span></div>
+        <div style="padding:24px">
+          <div class="field">
+            <label>Producto</label>
+            <select id="t-producto" onchange="updateSKU('t')">
+              <option value="">— selecciona —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>SKU</label>
+            <input type="text" id="t-sku" readonly style="color:var(--muted)">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Desde</label>
+              <select id="t-desde">
+                <option>Bodega</option><option>Casa</option><option>Tienda 1</option><option>Tienda 2</option><option>Tienda 3</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Hacia</label>
+              <select id="t-hacia">
+                <option>Casa</option><option>Bodega</option><option>Tienda 1</option><option>Tienda 2</option><option>Tienda 3</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Cantidad</label>
+            <input type="number" id="t-qty" min="1" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Nota</label>
+            <textarea id="t-nota" placeholder="opcional"></textarea>
+          </div>
+          <div class="modal-err" id="t-err"></div>
+          <div style="margin-top:4px">
+            <button class="btn primary" onclick="registrarTransferencia()">Registrar transferencia</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- MODAL AJUSTE RÁPIDO -->
+<div class="modal-back" id="ajuste-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAjuste()">✕</button>
+    <h2>Ajuste de stock</h2>
+    <div class="modal-sub" id="ajuste-sub">Producto</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Ubicación</label>
+        <select id="aj-loc">
+          <option>Bodega</option><option>Casa</option><option>Tienda 1</option><option>Tienda 2</option><option>Tienda 3</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Nuevo stock total</label>
+        <input type="number" id="aj-qty" min="0" placeholder="0">
+      </div>
+    </div>
+    <div class="field">
+      <label>Motivo</label>
+      <input type="text" id="aj-motivo" placeholder="conteo físico, corrección...">
+    </div>
+    <div class="modal-err" id="aj-err"></div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeAjuste()">Cancelar</button>
+      <button class="btn primary" onclick="confirmarAjuste()">Confirmar ajuste</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ CATÁLOGO DE PRODUCTOS ══
+const PRODUCTOS = [
+  {id:1, nombre:'Aromatizador 250ml Bahía Coco',       variante:'Bahía Coco',        sku:'ARO-BAC-250', estado:'Activo',   precio:9500, minimo:5},
+  {id:2, nombre:'Aromatizador 250ml Verbena & Bergamota',variante:'Verbena & Bergamota',sku:'ARO-VYB-250', estado:'Activo',   precio:9500, minimo:5},
+  {id:3, nombre:'Aromatizador 250ml Té Verde',          variante:'Té Verde',          sku:'ARO-TEV-250', estado:'Activo',   precio:9500, minimo:5},
+  {id:4, nombre:'Aromatizador 250ml Puro Maracuyá',     variante:'Puro Maracuyá',     sku:'ARO-PUM-250', estado:'Activo',   precio:9500, minimo:5},
+  {id:5, nombre:'Aromatizador 250ml Higo Silvestre',    variante:'Higo Silvestre',    sku:'ARO-HIS-250', estado:'Activo',   precio:9500, minimo:5},
+  {id:6, nombre:'Aromatizador 250ml Maracuya con Mango',variante:'Maracuyá con Mango',sku:'ARO-MCM-250', estado:'Inactivo', precio:9500, minimo:0},
+  {id:7, nombre:'Aromatizador 250ml Punta de Lobos',    variante:'Punta de Lobos',    sku:'ARO-PDL-250', estado:'Inactivo', precio:9500, minimo:0},
+  {id:8, nombre:'Jabón de Manos Té Verde 480ml',        variante:'Té Verde',          sku:'JAB-TEV-480', estado:'Activo',   precio:9500, minimo:10},
+  {id:9, nombre:'Lavaloza Líquido Cítrico 480ml',       variante:'Cítrico',           sku:'LAV-CIT-480', estado:'Activo',   precio:4900, minimo:10},
+  {id:10,nombre:'Recarga Jabón de Manos 2 Litros',      variante:'Té Verde',          sku:'JAB-TEV-2LT', estado:'Activo',   precio:19500,minimo:3},
+  {id:11,nombre:'Difusor Varita 150ml Punta de Lobos',  variante:'Punta de Lobos',    sku:'DIF-PDL-150', estado:'Activo',   precio:14900,minimo:3},
+  {id:12,nombre:'Difusor Varita 150ml Té Verde',        variante:'Té Verde',          sku:'DIF-TEV-150', estado:'Activo',   precio:14900,minimo:3},
+  {id:13,nombre:'Recarga Lavalozas Cítrico 2 Litros',   variante:'Cítrico',           sku:'LAV-CIT-2LT', estado:'Activo',   precio:7900, minimo:3},
+  {id:14,nombre:'Detergente Concentrado 3 Litros',      variante:'Suave',             sku:'DET-CON-3LT', estado:'Activo',   precio:10500,minimo:5},
+  {id:15,nombre:'Crema de Manos 480ml Té Verde',        variante:'Té Verde',          sku:'CRE-TEV-480', estado:'Activo',   precio:12900,minimo:5},
+];
+
+const LOCS = ['Bodega','Casa','Tienda 1','Tienda 2','Tienda 3'];
+
+// ══ ESTADO PRINCIPAL ══
+// stock[idProducto][ubicacion] = cantidad
+let stock = {};
+let movimientos = [];
+let currentLoc = 'all';
+let ajusteProductoId = null;
+
+// Inicializar stock en 0
+PRODUCTOS.forEach(p => {
+  stock[p.id] = {};
+  LOCS.forEach(l => stock[p.id][l] = 0);
+});
+
+// Stock demo inicial para que no quede vacío
+stock[8]['Bodega'] = 24; stock[8]['Casa'] = 4;
+stock[9]['Bodega'] = 18;
+stock[1]['Bodega'] = 3; // bajo mínimo — genera alerta
+stock[2]['Bodega'] = 12; stock[2]['Tienda 1'] = 2;
+stock[3]['Bodega'] = 8;
+stock[14]['Bodega'] = 6; stock[14]['Casa'] = 1;
+stock[15]['Bodega'] = 2; // bajo mínimo
+
+// ══ NAVEGACIÓN ══
+function showView(id, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  if(el) el.classList.add('active');
+  const titles = {dashboard:'Dashboard',inventario:'Inventario',entrada:'Registrar entrada',salida:'Registrar salida',transferencia:'Transferencia',historial:'Historial'};
+  document.getElementById('topbar-title').textContent = titles[id] || id;
+  if(id==='dashboard') renderDashboard();
+  if(id==='inventario') renderInventario();
+  if(id==='historial') renderHistorial();
+  if(['entrada','salida','transferencia'].includes(id)) populateSelects();
+}
+
+// ══ FECHA ══
+function setFecha(){
+  const d = new Date();
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  document.getElementById('fecha-hoy').textContent = d.getDate()+' '+meses[d.getMonth()]+' '+d.getFullYear();
+}
+
+// ══ HELPERS ══
+function totalStock(pid) { return LOCS.reduce((s,l)=>s+(stock[pid][l]||0),0); }
+function fmt(n){ return n.toLocaleString('es-CL'); }
+function tsNow(){
+  const d=new Date();
+  return d.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'2-digit'})+' '+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+}
+function stockClass(qty, minimo){
+  if(qty===0) return 'stock-zero';
+  if(minimo>0 && qty<=minimo) return 'stock-low';
+  if(minimo>0 && qty<=minimo*2) return 'stock-med';
+  return 'stock-ok';
+}
+
+// ══ DASHBOARD ══
+function renderDashboard(){
+  const activos = PRODUCTOS.filter(p=>p.estado==='Activo');
+  const total = PRODUCTOS.reduce((s,p)=>s+totalStock(p.id),0);
+  const bajos = activos.filter(p=>p.minimo>0 && totalStock(p.id)<=p.minimo);
+  const hoy = new Date().toDateString();
+  const movHoy = movimientos.filter(m=>new Date(m.ts).toDateString()===hoy).length;
+
+  document.getElementById('s-activos').textContent = activos.length;
+  document.getElementById('s-total').textContent = fmt(total);
+  document.getElementById('s-bajo').textContent = bajos.length;
+  document.getElementById('s-movhoy').textContent = movHoy;
+
+  // Alertas
+  const ac = document.getElementById('alert-container');
+  ac.innerHTML = '';
+  bajos.forEach(p=>{
+    const div=document.createElement('div');
+    div.className='alert-banner';
+    div.innerHTML=`<span>⚠</span> <strong>${p.nombre}</strong> — stock total: ${totalStock(p.id)} unid. (mínimo: ${p.minimo})`;
+    ac.appendChild(div);
+  });
+
+  // Tabla resumen
+  const tbody = document.getElementById('dash-table');
+  tbody.innerHTML = '';
+  PRODUCTOS.filter(p=>p.estado==='Activo').forEach(p=>{
+    const tot=totalStock(p.id);
+    const cls=stockClass(tot,p.minimo);
+    tbody.innerHTML+=`<tr>
+      <td>${p.nombre}</td>
+      <td class="mono">${p.sku}</td>
+      ${LOCS.map(l=>`<td><span class="stock-num ${stockClass(stock[p.id][l]||0,0)}">${stock[p.id][l]||0}</span></td>`).join('')}
+      <td><span class="stock-num ${cls}">${tot}</span></td>
+    </tr>`;
+  });
+}
+
+// ══ INVENTARIO ══
+function filterLoc(loc, el){
+  currentLoc = loc;
+  document.querySelectorAll('.loc-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderInventario();
+}
+
+function renderInventario(){
+  const search = document.querySelector('#view-inventario .search-box')?.value.toLowerCase()||'';
+  const filtroEstado = document.querySelector('#view-inventario .filter-select')?.value||'all';
+  const tbody = document.getElementById('inv-table');
+  tbody.innerHTML='';
+
+  PRODUCTOS
+    .filter(p=> filtroEstado==='all' || p.estado===filtroEstado)
+    .filter(p=> p.nombre.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search))
+    .forEach(p=>{
+      const qty = currentLoc==='all' ? totalStock(p.id) : (stock[p.id][currentLoc]||0);
+      const cls = stockClass(qty, p.minimo);
+      const activo = p.estado==='Activo';
+      tbody.innerHTML+=`<tr style="${activo?'':'opacity:0.45'}">
+        <td><span class="status-badge ${activo?'status-active':'status-inactive'}">${p.estado}</span></td>
+        <td>${p.nombre}</td>
+        <td class="mono">${p.sku}</td>
+        <td class="muted">${p.variante}</td>
+        <td><span class="stock-num ${cls}">${qty}</span></td>
+        <td class="muted">${p.minimo||'—'}</td>
+        <td class="muted">$${fmt(p.precio)}</td>
+        <td>${activo?`<span class="row-action" onclick="openAjuste(${p.id})">Ajustar</span>`:'—'}</td>
+      </tr>`;
+    });
+}
+
+// ══ HISTORIAL ══
+function renderHistorial(){
+  const search = document.querySelector('#view-historial .search-box')?.value.toLowerCase()||'';
+  const filtroTipo = document.querySelector('#view-historial .filter-select')?.value||'all';
+  const el = document.getElementById('hist-list');
+
+  const filtrado = movimientos
+    .filter(m=> filtroTipo==='all' || m.tipo===filtroTipo || (filtroTipo==='Entrada'&&m.tipo==='Entrada') || (filtroTipo==='Salida'&&['Venta','Marketing','Consumo interno','Merma','Ajuste'].includes(m.tipo)))
+    .filter(m=> m.producto.toLowerCase().includes(search) || m.tipo.toLowerCase().includes(search) || (m.ref||'').toLowerCase().includes(search))
+    .slice().reverse();
+
+  if(!filtrado.length){el.innerHTML='<div class="empty">Sin movimientos que mostrar.</div>';return;}
+
+  el.innerHTML = filtrado.map(m=>{
+    const esTrans = m.tipo==='Transferencia';
+    const esEntrada = m.tipo==='Entrada';
+    const dotCls = esEntrada?'entrada':esTrans?'transferencia':m.tipo==='Ajuste'?'ajuste':'salida';
+    const qtySign = esEntrada||esTrans?'pos':'neg';
+    const qtyStr = (esEntrada?'+':esTrans?'↔':'-')+m.qty;
+    const detalle = esTrans ? `${m.desde} → ${m.hacia}` : m.loc + (m.ref?` · ${m.ref}`:'');
+    return `<div class="hist-item">
+      <div class="hist-dot ${dotCls}"></div>
+      <div class="hist-body">
+        <div class="hist-top">
+          <span class="hist-title">${m.producto} <span style="color:var(--muted);font-size:10px">· ${m.tipo}</span></span>
+          <span class="hist-qty ${qtySign}">${qtyStr}</span>
+        </div>
+        <div class="hist-detail">${detalle}${m.nota?' · '+m.nota:''} <span style="margin-left:8px;color:var(--muted)">${m.ts}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══ SELECTS DE PRODUCTOS ══
+function populateSelects(){
+  ['e','s','t'].forEach(prefix=>{
+    const sel = document.getElementById(prefix+'-producto');
+    if(!sel) return;
+    sel.innerHTML='<option value="">— selecciona —</option>';
+    PRODUCTOS.filter(p=>p.estado==='Activo').forEach(p=>{
+      sel.innerHTML+=`<option value="${p.id}">${p.nombre} (${p.sku})</option>`;
+    });
+  });
+}
+
+function updateSKU(prefix){
+  const sel = document.getElementById(prefix+'-producto');
+  const skuEl = document.getElementById(prefix+'-sku');
+  const pid = parseInt(sel.value);
+  const p = PRODUCTOS.find(x=>x.id===pid);
+  skuEl.value = p ? p.sku : '';
+}
+
+// ══ REGISTRAR MOVIMIENTO ══
+function registrarMovimiento(tipoBase){
+  const prefix = tipoBase==='Entrada' ? 'e' : 's';
+  const pid = parseInt(document.getElementById(prefix+'-producto').value);
+  const qty = parseInt(document.getElementById(prefix+'-qty').value);
+  const loc = document.getElementById(prefix+'-loc').value;
+  const ref = document.getElementById(prefix+'-ref')?.value||'';
+  const nota = document.getElementById(prefix+'-nota')?.value||'';
+  const tipo = tipoBase==='Salida' ? document.getElementById('s-tipo').value : 'Entrada';
+  const errEl = document.getElementById(prefix+'-err');
+
+  if(!pid){errEl.textContent='Selecciona un producto.';return;}
+  if(!qty||qty<1){errEl.textContent='Cantidad debe ser mayor a 0.';return;}
+
+  if(tipoBase==='Salida'){
+    const actual = stock[pid][loc]||0;
+    if(qty>actual){errEl.textContent=`Stock insuficiente en ${loc}: hay ${actual} unid.`;return;}
+    stock[pid][loc] = actual - qty;
+  } else {
+    stock[pid][loc] = (stock[pid][loc]||0) + qty;
+  }
+
+  const p = PRODUCTOS.find(x=>x.id===pid);
+  movimientos.push({tipo, producto:p.nombre, sku:p.sku, qty, loc, ref, nota, ts:tsNow()});
+  errEl.textContent='';
+
+  // Limpiar
+  document.getElementById(prefix+'-producto').value='';
+  document.getElementById(prefix+'-sku').value='';
+  document.getElementById(prefix+'-qty').value='';
+  if(document.getElementById(prefix+'-ref')) document.getElementById(prefix+'-ref').value='';
+  if(document.getElementById(prefix+'-nota')) document.getElementById(prefix+'-nota').value='';
+
+  // Feedback
+  errEl.style.color='var(--accent)';
+  errEl.textContent=`✓ ${tipo} registrada: ${qty} unid. de ${p.nombre}`;
+  setTimeout(()=>{errEl.textContent='';errEl.style.color='var(--red)';},3000);
+  renderDashboard();
+}
+
+// ══ TRANSFERENCIA ══
+function registrarTransferencia(){
+  const pid = parseInt(document.getElementById('t-producto').value);
+  const desde = document.getElementById('t-desde').value;
+  const hacia = document.getElementById('t-hacia').value;
+  const qty = parseInt(document.getElementById('t-qty').value);
+  const nota = document.getElementById('t-nota').value||'';
+  const errEl = document.getElementById('t-err');
+
+  if(!pid){errEl.textContent='Selecciona un producto.';return;}
+  if(desde===hacia){errEl.textContent='Origen y destino deben ser distintos.';return;}
+  if(!qty||qty<1){errEl.textContent='Cantidad debe ser mayor a 0.';return;}
+
+  const actual = stock[pid][desde]||0;
+  if(qty>actual){errEl.textContent=`Stock insuficiente en ${desde}: hay ${actual} unid.`;return;}
+
+  stock[pid][desde] = actual - qty;
+  stock[pid][hacia] = (stock[pid][hacia]||0) + qty;
+
+  const p = PRODUCTOS.find(x=>x.id===pid);
+  movimientos.push({tipo:'Transferencia', producto:p.nombre, sku:p.sku, qty, desde, hacia, nota, ts:tsNow()});
+  errEl.textContent='';
+  document.getElementById('t-producto').value='';
+  document.getElementById('t-sku').value='';
+  document.getElementById('t-qty').value='';
+  document.getElementById('t-nota').value='';
+  errEl.style.color='var(--accent)';
+  errEl.textContent=`✓ Transferencia registrada: ${qty} unid. de ${p.nombre} (${desde} → ${hacia})`;
+  setTimeout(()=>{errEl.textContent='';errEl.style.color='var(--red)';},3000);
+  renderDashboard();
+}
+
+// ══ AJUSTE RÁPIDO ══
+function openAjuste(pid){
+  const p = PRODUCTOS.find(x=>x.id===pid);
+  ajusteProductoId = pid;
+  document.getElementById('ajuste-sub').textContent = p.nombre + ' · ' + p.sku;
+  document.getElementById('aj-qty').value='';
+  document.getElementById('aj-motivo').value='';
+  document.getElementById('aj-err').textContent='';
+  document.getElementById('ajuste-modal').classList.add('open');
+}
+
+function closeAjuste(){
+  document.getElementById('ajuste-modal').classList.remove('open');
+  ajusteProductoId = null;
+}
+
+function confirmarAjuste(){
+  const loc = document.getElementById('aj-loc').value;
+  const nuevoQty = parseInt(document.getElementById('aj-qty').value);
+  const motivo = document.getElementById('aj-motivo').value;
+  const errEl = document.getElementById('aj-err');
+
+  if(isNaN(nuevoQty)||nuevoQty<0){errEl.textContent='Ingresa una cantidad válida.';return;}
+
+  const p = PRODUCTOS.find(x=>x.id===ajusteProductoId);
+  const anterior = stock[p.id][loc]||0;
+  const diff = nuevoQty - anterior;
+  stock[p.id][loc] = nuevoQty;
+
+  movimientos.push({tipo:'Ajuste', producto:p.nombre, sku:p.sku, qty:Math.abs(diff), loc, ref:`${anterior}→${nuevoQty}`, nota:motivo||'ajuste manual', ts:tsNow()});
+  closeAjuste();
+  renderInventario();
+  renderDashboard();
+}
+
+// ══ MODAL ACCESO RÁPIDO DESDE TOPBAR ══
+function openMovModal(tipo){
+  showView(tipo, null);
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    if(n.textContent.trim().toLowerCase().includes(tipo)) n.classList.add('active');
+    else n.classList.remove('active');
+  });
+}
+
+// ══ INIT ══
+setFecha();
+populateSelects();
+renderDashboard();
+</script>
+</body>
+</html>
