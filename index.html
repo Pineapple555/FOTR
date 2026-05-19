@@ -1,560 +1,147 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>fotr.cl</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0f0f0d;
-    --ink: #e8e3d8;
-    --muted: #6b6760;
-    --dim: #2a2924;
-    --line: #242320;
-    --accent: #c8b882;
-    --accent2: #7a9e7e;
-    --accent3: #8fa3be;
-    --danger: #c87a7a;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'DM Mono', monospace;
-    font-weight: 300;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── GRAIN OVERLAY ── */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.5;
-  }
-
-  /* ── LAYOUT ── */
-  .shell {
-    position: relative;
-    z-index: 1;
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 0 32px;
-  }
-
-  /* ── HEADER ── */
-  header {
-    padding: 52px 0 0;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 28px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-  }
-
-  .wordmark {
-    font-family: 'Cormorant Garamond', serif;
-    font-weight: 300;
-    font-size: 2.6rem;
-    letter-spacing: -0.03em;
-    color: var(--ink);
-    line-height: 1;
-  }
-
-  .wordmark span {
-    color: var(--accent);
-  }
-
-  .header-right {
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    color: var(--muted);
-    text-transform: uppercase;
-    text-align: right;
-    line-height: 1.8;
-  }
-
-  /* ── INTRO ── */
-  .intro {
-    padding: 48px 0 40px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 40px;
-    align-items: end;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .intro h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-weight: 300;
-    font-size: clamp(2rem, 4vw, 3.2rem);
-    line-height: 1.12;
-    color: var(--ink);
-  }
-
-  .intro h1 em {
-    font-style: italic;
-    color: var(--accent);
-  }
-
-  .intro-desc {
-    font-size: 11px;
-    line-height: 1.9;
-    color: var(--muted);
-    letter-spacing: 0.04em;
-  }
-
-  /* ── MÓDULOS GRID ── */
-  .modules-label {
-    padding: 36px 0 20px;
-    font-size: 9px;
-    letter-spacing: 0.22em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1px;
-    background: var(--line);
-    border: 1px solid var(--line);
-  }
-
-  /* ── TARJETA ── */
-  .card {
-    background: var(--bg);
-    padding: 28px 28px 24px;
-    cursor: pointer;
-    transition: background 0.2s;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    min-height: 200px;
-  }
-
-  .card::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--card-accent, var(--accent));
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform 0.3s ease;
-  }
-
-  .card:hover {
-    background: var(--dim);
-  }
-
-  .card:hover::after {
-    transform: scaleX(1);
-  }
-
-  .card-num {
-    font-size: 9px;
-    letter-spacing: 0.2em;
-    color: var(--muted);
-    margin-bottom: 20px;
-  }
-
-  .card-icon {
-    font-size: 22px;
-    margin-bottom: 14px;
-    line-height: 1;
-  }
-
-  .card-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-weight: 600;
-    font-size: 1.4rem;
-    color: var(--ink);
-    margin-bottom: 8px;
-    line-height: 1.2;
-  }
-
-  .card-sub {
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    line-height: 1.7;
-    flex: 1;
-  }
-
-  .card-arrow {
-    margin-top: 20px;
-    font-size: 9px;
-    letter-spacing: 0.16em;
-    color: var(--card-accent, var(--accent));
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    opacity: 0;
-    transform: translateX(-6px);
-    transition: opacity 0.2s, transform 0.2s;
-  }
-
-  .card:hover .card-arrow {
-    opacity: 1;
-    transform: translateX(0);
-  }
-
-  .card-arrow::after {
-    content: '→';
-  }
-
-  /* ── CARD LOCKED BADGE ── */
-  .card-locked {
-    position: absolute;
-    top: 20px; right: 20px;
-    font-size: 9px;
-    letter-spacing: 0.14em;
-    color: var(--muted);
-    border: 1px solid var(--line);
-    padding: 2px 7px;
-    border-radius: 2px;
-    text-transform: uppercase;
-  }
-
-  /* SOON card */
-  .card.soon {
-    opacity: 0.4;
-    cursor: default;
-    pointer-events: none;
-  }
-
-  /* ── MODAL ── */
-  .modal-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(10, 10, 8, 0.88);
-    z-index: 100;
-    backdrop-filter: blur(2px);
-    align-items: center;
-    justify-content: center;
-  }
-
-  .modal-backdrop.open {
-    display: flex;
-  }
-
-  .modal {
-    background: #18180f;
-    border: 1px solid var(--line);
-    width: 100%;
-    max-width: 380px;
-    padding: 36px 32px 32px;
-    position: relative;
-    animation: slideUp 0.22s ease;
-  }
-
-  @keyframes slideUp {
-    from { transform: translateY(16px); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
-  }
-
-  .modal-close {
-    position: absolute;
-    top: 16px; right: 16px;
-    background: none; border: none;
-    color: var(--muted);
-    font-size: 18px;
-    cursor: pointer;
-    padding: 4px 8px;
-    transition: color 0.15s;
-  }
-
-  .modal-close:hover { color: var(--ink); }
-
-  .modal-eyebrow {
-    font-size: 9px;
-    letter-spacing: 0.2em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-
-  .modal-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-weight: 600;
-    font-size: 1.6rem;
-    color: var(--ink);
-    margin-bottom: 28px;
-  }
-
-  .field {
-    margin-bottom: 16px;
-  }
-
-  .field label {
-    display: block;
-    font-size: 9px;
-    letter-spacing: 0.16em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-
-  .field input {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    color: var(--ink);
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    font-weight: 300;
-    padding: 11px 14px;
-    outline: none;
-    transition: border-color 0.2s;
-    letter-spacing: 0.04em;
-    border-radius: 0;
-    -webkit-appearance: none;
-  }
-
-  .field input:focus {
-    border-color: var(--modal-accent, var(--accent));
-  }
-
-  .modal-btn {
-    width: 100%;
-    margin-top: 24px;
-    padding: 13px;
-    background: var(--modal-accent, var(--accent));
-    border: none;
-    color: #0f0f0d;
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    font-weight: 400;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.12s;
-  }
-
-  .modal-btn:hover   { opacity: 0.88; }
-  .modal-btn:active  { transform: scale(0.98); }
-
-  .modal-error {
-    margin-top: 12px;
-    font-size: 10px;
-    color: var(--danger);
-    letter-spacing: 0.08em;
-    min-height: 16px;
-    text-align: center;
-  }
-
-  /* ── FOOTER ── */
-  footer {
-    margin-top: 64px;
-    padding: 24px 0 40px;
-    border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 9px;
-    letter-spacing: 0.14em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
-  /* ── ANIMS ── */
-  .card {
-    animation: fadeIn 0.4s ease both;
-  }
-  .card:nth-child(1) { animation-delay: 0.05s; }
-  .card:nth-child(2) { animation-delay: 0.12s; }
-  .card:nth-child(3) { animation-delay: 0.19s; }
-  .card:nth-child(4) { animation-delay: 0.26s; }
-  .card:nth-child(5) { animation-delay: 0.33s; }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOTR — Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<div class="shell">
+<!-- ══════════════════════════════════════
+     LOGIN PAGE
+══════════════════════════════════════ -->
+<div id="login-page">
+  <div class="login-wrap">
 
-  <header>
-    <div class="wordmark">fotr<span>.</span>cl</div>
-    <div class="header-right">
-      Espacio personal<br>Francisco Osorio
-    </div>
-  </header>
-
-  <div class="intro">
-    <h1>Proyectos,<br>herramientas<br>y <em>recursos</em>.</h1>
-    <p class="intro-desc">
-      Hub de acceso privado.<br>
-      Cada módulo requiere sus propias credenciales.<br>
-      Selecciona un proyecto para continuar.
-    </p>
-  </div>
-
-  <div class="modules-label">— Módulos disponibles</div>
-
-  <div class="grid">
-
-    <!-- WMS INTENT -->
-    <div class="card" style="--card-accent: var(--accent2)"
-         onclick="openModal('wms', 'WMS · INTENT', 'francisco', 'fotr2025', 'wms.fotr.cl/wms.html', '#7a9e7e')">
-      <div class="card-num">01</div>
-      <span class="card-locked">Privado</span>
-      <div class="card-icon">⊡</div>
-      <div class="card-title">WMS Intent</div>
-      <div class="card-sub">Gestión de stock · pedidos · despacho<br>Almacén de Comercial Verde Origen</div>
-      <div class="card-arrow">Ingresar</div>
+    <div class="login-brand">
+      <div class="login-logo">F</div>
+      <h1 class="login-title">FOTR</h1>
+      <p class="login-tagline">Workspace personal de Francisco Osorio</p>
     </div>
 
-    <!-- GUÍA CLAUDE -->
-    <div class="card" style="--card-accent: var(--accent)"
-         onclick="openModal('guia', 'Guía Claude', 'francisco', 'fotr2025', 'guia-claude-francisco.html', '#c8b882')">
-      <div class="card-num">02</div>
-      <span class="card-locked">Privado</span>
-      <div class="card-icon">◈</div>
-      <div class="card-title">Guía Claude</div>
-      <div class="card-sub">Prompts y playbooks<br>para INTENT, empleo y proyectos</div>
-      <div class="card-arrow">Ingresar</div>
+    <div class="login-card">
+      <h2 class="login-card-title">Iniciar sesión</h2>
+      <p class="login-card-sub">Ingresa tus credenciales para acceder al workspace.</p>
+
+      <div id="login-error" class="login-error" hidden></div>
+
+      <form id="login-form" novalidate autocomplete="on">
+        <div class="field">
+          <label for="email">Correo electrónico</label>
+          <div class="inp-wrap">
+            <i data-lucide="mail" class="inp-icon"></i>
+            <input id="email" type="email" placeholder="tu@email.com"
+                   autocomplete="email" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="pwd">Contraseña</label>
+          <div class="inp-wrap">
+            <i data-lucide="lock" class="inp-icon"></i>
+            <input id="pwd" type="password" placeholder="••••••••"
+                   autocomplete="current-password" required>
+            <button type="button" class="eye-btn" onclick="UI.togglePwd(this)" tabindex="-1">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="login-btn" class="submit-btn">
+          Ingresar al workspace
+        </button>
+      </form>
+
+      <div class="login-hint">
+        <i data-lucide="info"></i>
+        Demo: francisco@fotr.com / fotr2024
+      </div>
     </div>
 
-    <!-- DASHBOARD -->
-    <div class="card" style="--card-accent: var(--accent3)"
-         onclick="openModal('dash', 'Dashboard', 'francisco', 'fotr2025', 'dash.fotr.cl/index.html', '#8fa3be')">
-      <div class="card-num">03</div>
-      <span class="card-locked">Privado</span>
-      <div class="card-icon">◉</div>
-      <div class="card-title">Dashboard</div>
-      <div class="card-sub">KPIs y métricas de INTENT<br>Ventas · inventario · despachos</div>
-      <div class="card-arrow">Ingresar</div>
-    </div>
-
-    <!-- MOCKUPS -->
-    <div class="card" style="--card-accent: var(--accent)"
-         onclick="openModal('mockups', 'Mockups', 'francisco', 'fotr2025', 'mockups/index.html', '#c8b882')">
-      <div class="card-num">04</div>
-      <span class="card-locked">Privado</span>
-      <div class="card-icon">◇</div>
-      <div class="card-title">Mockups</div>
-      <div class="card-sub">Prototipos de páginas web<br>YoSoyLibro.cl · INTENT · otros</div>
-      <div class="card-arrow">Ingresar</div>
-    </div>
-
-    <!-- PRÓXIMAMENTE -->
-    <div class="card soon" style="--card-accent: var(--muted)">
-      <div class="card-num">05</div>
-      <div class="card-icon">○</div>
-      <div class="card-title">Próximamente</div>
-      <div class="card-sub">Módulo en construcción</div>
-    </div>
-
-  </div>
-
-  <footer>
-    <span>fotr.cl · uso privado</span>
-    <span id="footer-date"></span>
-  </footer>
-
-</div><!-- /shell -->
-
-
-<!-- ── MODAL ── -->
-<div class="modal-backdrop" id="modal" onclick="closeOnBackdrop(event)">
-  <div class="modal" id="modal-box">
-    <button class="modal-close" onclick="closeModal()">✕</button>
-    <div class="modal-eyebrow">Acceso protegido</div>
-    <div class="modal-title" id="modal-title">Módulo</div>
-    <div class="field">
-      <label>Usuario</label>
-      <input type="text" id="inp-user" autocomplete="username" placeholder="usuario" onkeydown="handleKey(event)">
-    </div>
-    <div class="field">
-      <label>Clave</label>
-      <input type="password" id="inp-pass" autocomplete="current-password" placeholder="••••••••" onkeydown="handleKey(event)">
-    </div>
-    <button class="modal-btn" id="modal-btn" onclick="doLogin()">Entrar</button>
-    <div class="modal-error" id="modal-error"></div>
+    <p class="login-copy">FOTR Workspace &copy; 2025</p>
   </div>
 </div>
 
-<script>
-  // ── CONFIGURACIÓN DE CREDENCIALES ──
-  // Para cambiar usuario/clave de cada módulo, edita estos valores.
-  // No compartas este archivo públicamente.
-  const MODULES = {
-    wms:     { user: 'intent',    pass: 'intent2025',  url: 'guia-claude-francisco.html', accent: '#7a9e7e' },
-    guia:    { user: 'francisco', pass: 'fotr2025',    url: 'guia-claude-francisco.html', accent: '#c8b882' },
-    dash:    { user: 'francisco', pass: 'fotr2025',    url: 'guia-claude-francisco.html', accent: '#8fa3be' },
-    mockups: { user: 'francisco', pass: 'fotr2025',    url: 'guia-claude-francisco.html', accent: '#c8b882' },
-  };
 
-  let currentModule = null;
+<!-- ══════════════════════════════════════
+     APP SHELL
+══════════════════════════════════════ -->
+<div id="app-shell" class="hidden">
 
-  function openModal(id, title, user, pass, url, accent) {
-    currentModule = id;
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-error').textContent = '';
-    document.getElementById('inp-user').value = '';
-    document.getElementById('inp-pass').value = '';
-    document.getElementById('modal').style.setProperty('--modal-accent', accent);
-    document.getElementById('modal').classList.add('open');
-    setTimeout(() => document.getElementById('inp-user').focus(), 80);
-  }
+  <!-- Header -->
+  <header class="hdr" id="app-header"></header>
 
-  function closeModal() {
-    document.getElementById('modal').classList.remove('open');
-    currentModule = null;
-  }
+  <!-- Main content -->
+  <main class="main">
+    <div class="main-inner">
 
-  function closeOnBackdrop(e) {
-    if (e.target === document.getElementById('modal')) closeModal();
-  }
+      <!-- Page heading -->
+      <div class="page-hdr">
+        <div>
+          <h2 class="page-title">Mis aplicaciones</h2>
+          <p class="page-sub">
+            Accede a tus proyectos, herramientas internas y dashboards desde un solo lugar.
+          </p>
+        </div>
+        <button class="filter-btn" id="filter-btn" aria-label="Filtrar aplicaciones">
+          <i data-lucide="sliders-horizontal"></i>
+          Filtrar
+        </button>
+      </div>
 
-  function handleKey(e) {
-    if (e.key === 'Enter') doLogin();
-    if (e.key === 'Escape') closeModal();
-  }
+      <!-- Search bar -->
+      <div class="search-wrap">
+        <i data-lucide="search" class="search-ico"></i>
+        <input id="search" type="search" class="search-inp" placeholder="Buscar aplicaciones…"
+               autocomplete="off" spellcheck="false">
+      </div>
 
-  function doLogin() {
-    const m = MODULES[currentModule];
-    if (!m) return;
+      <!-- Filter chips (collapsed by default) -->
+      <div class="chip-bar hidden" id="filter-panel">
+        <button class="chip active" data-f="all">Todas</button>
+        <button class="chip" data-f="active">Activas</button>
+        <button class="chip" data-f="development">En desarrollo</button>
+        <button class="chip" data-f="coming-soon">Próximamente</button>
+      </div>
 
-    const u = document.getElementById('inp-user').value.trim();
-    const p = document.getElementById('inp-pass').value;
-    const errEl = document.getElementById('modal-error');
+      <!-- Apps grid (populated by JS) -->
+      <div class="apps-grid" id="apps-grid"></div>
 
-    if (!u || !p) { errEl.textContent = 'Completa usuario y clave.'; return; }
+    </div>
+  </main>
 
-    if (u === m.user && p === m.pass) {
-      errEl.textContent = '';
-      // Guardar sesión temporalmente
-      sessionStorage.setItem('fotr_auth_' + currentModule, '1');
-      // Navegar al módulo
-      window.location.href = m.url;
-    } else {
-      errEl.textContent = 'Credenciales incorrectas.';
-      document.getElementById('inp-pass').value = '';
-      document.getElementById('inp-pass').focus();
-    }
-  }
+  <!-- Mobile bottom navigation -->
+  <nav class="bot-nav" aria-label="Navegación principal">
+    <button class="nav-tab active" data-tab="apps"
+            onclick="UI.setNav('apps')">
+      <i data-lucide="grid-2x2"></i>
+      <span>Apps</span>
+    </button>
+    <button class="nav-tab" data-tab="fav"
+            onclick="UI.setNav('fav'); toast('Favoritos — próximamente')">
+      <i data-lucide="star"></i>
+      <span>Favoritos</span>
+    </button>
+    <button class="nav-tab" data-tab="notif"
+            onclick="UI.setNav('notif'); toast('Notificaciones — próximamente')">
+      <i data-lucide="bell"></i>
+      <span>Notificaciones</span>
+    </button>
+    <button class="nav-tab" data-tab="cfg"
+            onclick="UI.setNav('cfg'); toast('Ajustes — próximamente')">
+      <i data-lucide="settings"></i>
+      <span>Ajustes</span>
+    </button>
+  </nav>
 
-  // Fecha en footer
-  const d = new Date();
-  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  document.getElementById('footer-date').textContent =
-    months[d.getMonth()] + ' ' + d.getFullYear();
-</script>
+</div><!-- /app-shell -->
+
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
