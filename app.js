@@ -94,7 +94,7 @@ const APPS = [
     iconBg:       '#F3E5F5',
     iconColor:    '#7B1FA2',
     status:       'active',
-    url:          '#',
+    url:          'guia-claude-francisco.html',
     allowedRoles: ['admin', 'user'],
     allowedUsers: [],
   },
