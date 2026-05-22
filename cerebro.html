@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cerebro INTENT</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#2563EB;--primary-dark:#1D4ED8;--primary-light:#EFF6FF;
+  --sidebar-bg:#1E293B;--sidebar-text:#94A3B8;--sidebar-hover:#334155;
+  --bg:#F1F5F9;--card:#FFFFFF;--border:#E2E8F0;
+  --text:#1E293B;--text-muted:#64748B;
+  --success:#10B981;--warning:#F59E0B;--danger:#EF4444;
+  --radius:8px;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06);
+  --sw:240px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── LOGIN ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1E293B,#0F172A)}
+.login-card{background:#fff;padding:48px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;max-width:400px;width:90%}
+.login-logo{width:72px;height:72px;background:var(--primary);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:30px;color:#fff;font-weight:900}
+.login-card h1{font-size:26px;font-weight:700;margin-bottom:6px}
+.login-card p{color:var(--text-muted);margin-bottom:28px;font-size:14px}
+.login-note{margin-top:16px;font-size:12px;color:var(--text-muted)}
+
+/* ── APP LAYOUT ── */
+#app{display:none;min-height:100vh}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sw);background:var(--sidebar-bg);overflow-y:auto;z-index:100;display:flex;flex-direction:column;transition:transform .3s}
+.sidebar-header{padding:18px 14px;border-bottom:1px solid #334155}
+.sidebar-logo{display:flex;align-items:center;gap:9px;color:#fff;font-weight:700;font-size:16px}
+.logo-icon{width:30px;height:30px;background:var(--primary);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;flex-shrink:0}
+.sidebar-user{padding:10px 14px;border-bottom:1px solid #334155;display:flex;align-items:center;gap:9px}
+.user-avatar{width:30px;height:30px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
+.user-name{color:#fff;font-size:12px;font-weight:600}
+.user-role{color:var(--sidebar-text);font-size:11px}
+.sidebar-nav{padding:12px 8px;flex:1}
+.nav-section{margin-bottom:20px}
+.nav-section-label{color:#475569;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:0 8px;margin-bottom:3px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;color:var(--sidebar-text);cursor:pointer;transition:all .15s;font-size:13px;font-weight:500;user-select:none}
+.nav-item:hover{background:var(--sidebar-hover);color:#fff}
+.nav-item.active{background:var(--primary);color:#fff}
+.nav-icon{width:16px;text-align:center;flex-shrink:0;font-size:14px}
+.sidebar-footer{padding:10px 8px;border-top:1px solid #334155}
+.main-content{margin-left:var(--sw);min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 22px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:15px;font-weight:600}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.content-area{padding:20px;flex:1}
+
+/* ── CARDS ── */
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-title{font-size:14px;font-weight:600}
+.card-body{padding:18px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;line-height:1.4}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-close{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;line-height:1;padding:2px;transition:color .15s}
+.btn-close:hover{color:var(--text)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+.form-control{width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:#fff;outline:none;transition:border-color .15s;font-family:inherit}
+.form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-control:disabled{background:var(--bg);color:var(--text-muted)}
+select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 8px center;background-size:16px;padding-right:30px}
+textarea.form-control{resize:vertical;min-height:72px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.col-span-2{grid-column:span 2}
+.col-span-3{grid-column:span 3}
+.form-hint{font-size:11px;color:var(--text-muted);margin-top:4px}
+
+/* ── TABLES ── */
+.table-container{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--bg);padding:9px 11px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 11px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#F8FAFC}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:600}
+.badge-success{background:#D1FAE5;color:#065F46}
+.badge-warning{background:#FEF3C7;color:#92400E}
+.badge-danger{background:#FEE2E2;color:#991B1B}
+.badge-info{background:#DBEAFE;color:#1E40AF}
+.badge-gray{background:#F1F5F9;color:#475569}
+.sku-badge{font-family:monospace;font-size:11px;background:var(--bg);padding:2px 6px;border-radius:4px;color:var(--primary);font-weight:600}
+.channel-pill{display:inline-flex;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:600;background:var(--primary-light);color:var(--primary);margin:1px}
+.stage-badge{display:inline-flex;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.st-prospecto{background:#F1F5F9;color:#475569}
+.st-contacto{background:#DBEAFE;color:#1E40AF}
+.st-propuesta{background:#FEF3C7;color:#92400E}
+.st-negociacion{background:#FDE8D8;color:#9A3412}
+.st-cerrado{background:#D1FAE5;color:#065F46}
+.st-perdido{background:#FEE2E2;color:#991B1B}
+
+/* ── SEARCH ── */
+.search-bar{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:180px}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:13px;pointer-events:none}
+.search-input{width:100%;padding:8px 11px 8px 30px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none;transition:border-color .15s;font-family:inherit}
+.search-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.active{display:flex}
+.modal{background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:100%;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
+.modal-sm{max-width:440px}.modal-md{max-width:620px}.modal-lg{max-width:840px}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.modal-title{font-size:15px;font-weight:700}
+.modal-body{padding:22px;overflow-y:auto}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+
+/* ── TOASTS ── */
+.toast-container{position:fixed;bottom:22px;right:22px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{background:#fff;border-radius:8px;box-shadow:var(--shadow-md);padding:11px 14px;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:500;min-width:230px;max-width:360px;animation:slideIn .2s ease;border-left:4px solid var(--primary)}
+.toast.success{border-color:var(--success)}.toast.error{border-color:var(--danger)}.toast.warning{border-color:var(--warning)}
+@keyframes slideIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── MISC ── */
+.loading{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--text-muted);flex-direction:column;gap:12px}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:44px 20px;color:var(--text-muted)}
+.empty-icon{font-size:36px;margin-bottom:10px}
+.empty-state h3{font-size:14px;font-weight:600;margin-bottom:5px;color:var(--text)}
+.empty-state p{font-size:13px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:700}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-title{font-size:17px;font-weight:700}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.info-item label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);display:block;margin-bottom:3px}
+.info-item p{font-size:13px}
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:18px}
+.tab{padding:9px 14px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab:hover:not(.active){color:var(--text)}
+.readonly-notice{display:flex;align-items:center;gap:8px;padding:9px 13px;background:#FEF3C7;border-radius:6px;border-left:3px solid var(--warning);font-size:12px;color:#92400E;margin-bottom:14px}
+.log-entry{padding:11px 0;border-bottom:1px solid var(--border)}
+.log-entry:last-child{border-bottom:none}
+.log-ts{font-size:11px;color:var(--text-muted);font-family:monospace}
+.log-action-txt{font-size:13px;font-weight:500;margin:3px 0}
+.log-detail{font-size:12px;color:var(--text-muted)}
+.flex{display:flex}.gap-8{gap:8px}.items-center{align-items:center}
+.text-muted{color:var(--text-muted)}.text-sm{font-size:12px}.fw-bold{font-weight:700}
+.hidden{display:none!important}
+.mt-8{margin-top:8px}.mb-14{margin-bottom:14px}
+.pre-wrap{white-space:pre-wrap}
+
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main-content{margin-left:0}
+  .form-grid,.form-grid-3{grid-template-columns:1fr}
+  .col-span-2,.col-span-3{grid-column:span 1}
+  .info-grid{grid-template-columns:1fr}
+  #mobile-menu-btn{display:flex!important}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">I</div>
+    <h1>Cerebro INTENT</h1>
+    <p>Sistema de gestión interna · Cuidado del Hogar</p>
+    <div id="gsi-btn"></div>
+    <p class="login-note">Acceso restringido a usuarios autorizados de INTENT</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="logo-icon">I</div>
+        <span>Cerebro INTENT</span>
+      </div>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-avatar" id="u-avatar">U</div>
+      <div><div class="user-name" id="u-name">—</div><div class="user-role" id="u-role">—</div></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-label">Catálogo</div>
+        <div class="nav-item active" data-mod="productos"><span class="nav-icon">📦</span>Productos</div>
+        <div class="nav-item" data-mod="canales"><span class="nav-icon">🛒</span>Canales</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Operaciones</div>
+        <div class="nav-item" data-mod="inventario"><span class="nav-icon">🏭</span>Inventario</div>
+        <div class="nav-item" data-mod="b2b"><span class="nav-icon">🤝</span>Clientes B2B</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Marca</div>
+        <div class="nav-item" data-mod="marca"><span class="nav-icon">✨</span>Marca</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Sistema</div>
+        <div class="nav-item" data-mod="log"><span class="nav-icon">📋</span>Log de Acciones</div>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="nav-item" id="logout-btn"><span class="nav-icon">🚪</span>Cerrar sesión</div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div class="flex items-center gap-8">
+        <button class="btn btn-secondary btn-sm" id="mobile-menu-btn" style="display:none">☰</button>
+        <span class="topbar-title" id="topbar-title">Productos</span>
+      </div>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </header>
+    <div class="content-area" id="content-area"></div>
+  </main>
+</div>
+
+<div id="modals"></div>
+<div class="toast-container" id="toasts"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+//  CONFIGURATION  ← edit these before deploying
+// ═══════════════════════════════════════════════════════════
+const CFG = {
+  CLIENT_ID:      '702471036564-n8buttlfaejvb2qdboa8uf90amv2gbab.apps.googleusercontent.com',
+  API_KEY:        'AIzaSyDqdY7l6M6j2m-6z8MEpm3WnsjwpjhZlLA',
+  SPREADSHEET_ID: '18sDRVftUDIsLo4CNNjAWThLGLWspBvi-9zCtW0OnXVU',
+  // Francisco's email gets full write access; others get restricted access.
+  // Set AUTHORIZED_EMAILS to ['*'] to allow any authenticated Google account.
+  FRANCISCO_EMAIL:    'francisco.osorioz@gmail.com',
+  AUTHORIZED_EMAILS:  ['francisco.osorioz@gmail.com'], // add team emails here
+};
+
+// ═══════════════════════════════════════════════════════════
+//  SHEET / COLUMN DEFINITIONS
+// ═══════════════════════════════════════════════════════════
+const SH = {
+  PROD:  'PRODUCTOS_CORE',
+  CANAL: 'PRODUCTOS_CANAL',
+  INV:   'INVENTARIO',
+  KITS:  'KITS',
+  B2B:   'CLIENTES_B2B',
+  MARCA: 'MARCA',
+  LOG:   'LOG_ACCIONES',
+};
+
+const C = {
+  PROD:  {SKU:0,NOMBRE:1,CAT:2,DESC:3,PRECIO:4,PESO:5,DIM:6,ING:7,ESTADO:8,FECHA:9,NOTAS:10},
+  CANAL: {SKU:0,CANAL:1,TITULO:2,DESC:3,PRECIO:4,URL:5,ESTADO:6,IMGS:7,TAGS:8,ACT:9},
+  INV:   {SKU:0,UBIC:1,STOCK:2,SMIN:3,ACT:4,NOTAS:5},
+  KITS:  {KSKU:0,CSKU:1,QTY:2},
+  B2B:   {ID:0,EMP:1,CONT:2,EMAIL:3,TEL:4,CANAL:5,ETAPA:6,VALOR:7,FECHA:8,PROX:9,NOTAS:10},
+  MARCA: {SEC:0,CONT:1},
+  LOG:   {TS:0,USR:1,EMAIL:2,HOJA:3,ACC:4,ID:5,DET:6},
+};
+
+const CANALES  = ['shopify','mercadolibre','falabella','paris','lider','b2b','retail'];
+const ETAPAS   = ['Prospecto','Contacto','Propuesta','Negociación','Cerrado','Perdido'];
+const EST_PROD = ['activo','pausado','descontinuado','borrador'];
+const EST_CANAL= ['activo','pausado','no_listado'];
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+const ST = {
+  user: null, isFrancisco: false,
+  tokenClient: null, gapiReady: false, gsiReady: false,
+  data: { prod:[], canal:[], inv:[], kits:[], b2b:[], marca:[], log:[] },
+};
+
+// ═══════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════
+const $  = id => document.getElementById(id);
+const qs = sel => document.querySelector(sel);
+
+function esc(s){ const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; }
+
+function fmtDate(v){
+  if(!v) return '—';
+  try{ return new Date(v).toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'}); }catch{ return v; }
+}
+function fmtDT(v){
+  if(!v) return '—';
+  try{ return new Date(v).toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch{ return v; }
+}
+function fmtCLP(v){
+  if(v===''||v===null||v===undefined) return '—';
+  const n=parseFloat(v); if(isNaN(n)) return v??'—';
+  return new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(n);
+}
+const nowISO = () => new Date().toISOString();
+const genId  = () => 'B2B-'+Date.now().toString(36).toUpperCase();
+
+function toast(msg, type='info'){
+  const c=$('toasts'), t=document.createElement('div');
+  t.className=`toast ${type}`;
+  const ico={success:'✓',error:'✕',warning:'⚠',info:'ℹ'};
+  t.innerHTML=`<span>${ico[type]||'ℹ'}</span><span>${esc(msg)}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>{ t.style.cssText='opacity:0;transition:opacity .3s'; setTimeout(()=>t.remove(),310); },3500);
+}
+
+function setLoading(el){ el.innerHTML='<div class="loading"><div class="spinner"></div><span>Cargando…</span></div>'; }
+
+// ═══════════════════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════════════════
+const Modal = {
+  open(html, size='modal-md'){
+    $('modals').innerHTML=`<div class="modal-overlay active" id="moverlay"><div class="modal ${size}" id="mdialog">${html}</div></div>`;
+    $('moverlay').onclick = e => { if(e.target===e.currentTarget) Modal.close(); };
+    document.addEventListener('keydown', Modal._esc);
+  },
+  close(){ $('modals').innerHTML=''; document.removeEventListener('keydown', Modal._esc); },
+  _esc(e){ if(e.key==='Escape') Modal.close(); },
+};
+window.Modal = Modal;
+
+// ═══════════════════════════════════════════════════════════
+//  PERMISSION HELPERS
+// ═══════════════════════════════════════════════════════════
+function canWrite(sheet){
+  if(!ST.user) return false;
+  if(ST.isFrancisco) return true;
+  return [SH.INV, SH.B2B].includes(sheet);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GOOGLE AUTH
+// ═══════════════════════════════════════════════════════════
+function initGSI(){
+  if(typeof google==='undefined'){ setTimeout(initGSI,200); return; }
+  ST.gsiReady=true;
+  google.accounts.id.initialize({ client_id:CFG.CLIENT_ID, callback:onCredential });
+  ST.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CFG.CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: onToken,
+  });
+  google.accounts.id.renderButton($('gsi-btn'),{ theme:'outline', size:'large', text:'signin_with', width:280 });
+  google.accounts.id.prompt();
+  maybeRestoreSession();
+}
+
+function initGAPI(){
+  if(typeof gapi==='undefined'){ setTimeout(initGAPI,200); return; }
+  gapi.load('client', async ()=>{
+    await gapi.client.init({ apiKey:CFG.API_KEY, discoveryDocs:['https://sheets.googleapis.com/$discovery/rest?version=v4'] });
+    ST.gapiReady=true;
+    maybeRestoreSession();
+  });
+}
+
+function maybeRestoreSession(){
+  if(!ST.gapiReady||!ST.gsiReady) return;
+  const stored=sessionStorage.getItem('ci_user');
+  if(stored){ try{ ST.user=JSON.parse(stored); ST.isFrancisco=isF(ST.user.email); ST.tokenClient.requestAccessToken({prompt:''}); }catch{} }
+}
+
+function onCredential(resp){
+  const p=decodeJWT(resp.credential);
+  if(!isAllowed(p.email)){ toast('Email no autorizado','error'); return; }
+  ST.user=p; ST.isFrancisco=isF(p.email);
+  sessionStorage.setItem('ci_user',JSON.stringify(p));
+  ST.tokenClient.requestAccessToken({prompt:'consent'});
+}
+
+function onToken(tr){
+  if(tr.error){ toast('Error de autorización: '+tr.error,'error'); return; }
+  gapi.client.setToken({access_token:tr.access_token});
+  showApp();
+}
+
+function isF(email){ return email?.toLowerCase()===CFG.FRANCISCO_EMAIL.toLowerCase(); }
+function isAllowed(email){
+  if(!email) return false;
+  if(CFG.AUTHORIZED_EMAILS.includes('*')) return true;
+  return CFG.AUTHORIZED_EMAILS.some(e=>e.toLowerCase()===email.toLowerCase());
+}
+
+function decodeJWT(token){
+  const b64=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+  return JSON.parse(decodeURIComponent(atob(b64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+}
+
+function logout(){
+  sessionStorage.removeItem('ci_user'); ST.user=null;
+  if(typeof google!=='undefined') google.accounts.id.disableAutoSelect();
+  $('app').style.display='none'; $('login-screen').style.display='flex';
+  toast('Sesión cerrada');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SHEETS API
+// ═══════════════════════════════════════════════════════════
+async function shGet(range){
+  const r=await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId:CFG.SPREADSHEET_ID, range, valueRenderOption:'UNFORMATTED_VALUE' });
+  return r.result.values||[];
+}
+async function shUpdate(range,values){
+  return gapi.client.sheets.spreadsheets.values.update({ spreadsheetId:CFG.SPREADSHEET_ID, range, valueInputOption:'USER_ENTERED', resource:{values} });
+}
+async function shAppend(sheet,values){
+  return gapi.client.sheets.spreadsheets.values.append({ spreadsheetId:CFG.SPREADSHEET_ID, range:`${sheet}!A1`, valueInputOption:'USER_ENTERED', insertDataOption:'INSERT_ROWS', resource:{values} });
+}
+async function loadSh(name){ return shGet(`${name}!A2:ZZ9999`); }
+
+async function logAct(sheet,action,id,detail){
+  const row=[nowISO(),ST.user?.name||'?',ST.user?.email||'',sheet,action,id||'',detail||''];
+  await shAppend(SH.LOG,[row]);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SHOW APP
+// ═══════════════════════════════════════════════════════════
+function showApp(){
+  $('login-screen').style.display='none';
+  $('app').style.display='flex';
+  const u=ST.user;
+  if(u){
+    $('u-name').textContent=u.name||u.email;
+    $('u-avatar').textContent=(u.name||u.email||'U')[0].toUpperCase();
+    $('u-role').textContent=ST.isFrancisco?'Administrador':'Equipo INTENT';
+  }
+  document.querySelectorAll('.nav-item[data-mod]').forEach(el=>{
+    el.onclick=()=>nav(el.dataset.mod);
+  });
+  $('logout-btn').onclick=logout;
+  const mb=$('mobile-menu-btn');
+  if(window.innerWidth<=768) mb.style.display='flex';
+  mb.onclick=()=>$('sidebar').classList.toggle('open');
+  window.addEventListener('resize',()=>{
+    mb.style.display=window.innerWidth<=768?'flex':'none';
+    if(window.innerWidth>768) $('sidebar').classList.remove('open');
+  });
+  nav('productos');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════
+const MOD_TITLES={productos:'Productos',canales:'Canales',inventario:'Inventario',b2b:'Clientes B2B',marca:'Marca',log:'Log de Acciones'};
+
+function nav(mod){
+  document.querySelectorAll('.nav-item[data-mod]').forEach(el=>el.classList.toggle('active',el.dataset.mod===mod));
+  $('topbar-title').textContent=MOD_TITLES[mod]||mod;
+  $('topbar-actions').innerHTML='';
+  if(window.innerWidth<=768) $('sidebar').classList.remove('open');
+  const ca=$('content-area');
+  ({productos:renderProd,canales:renderCanal,inventario:renderInv,b2b:renderB2B,marca:renderMarca,log:renderLog})[mod]?.(ca);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HELPERS: BADGES
+// ═══════════════════════════════════════════════════════════
+function estadoBadge(s){
+  return `<span class="badge ${{activo:'badge-success',pausado:'badge-warning',descontinuado:'badge-danger',borrador:'badge-gray'}[s]||'badge-gray'}">${esc(s)||'—'}</span>`;
+}
+function canalBadge(s){
+  return `<span class="badge ${{activo:'badge-success',pausado:'badge-warning',no_listado:'badge-gray'}[s]||'badge-gray'}">${esc(s)||'—'}</span>`;
+}
+function etapaClass(e){
+  return {Prospecto:'st-prospecto',Contacto:'st-contacto',Propuesta:'st-propuesta',Negociación:'st-negociacion',Cerrado:'st-cerrado',Perdido:'st-perdido'}[e]||'st-prospecto';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODULE: PRODUCTOS
+// ═══════════════════════════════════════════════════════════
+async function renderProd(ca){
+  setLoading(ca);
+  if(canWrite(SH.PROD)){
+    $('topbar-actions').innerHTML=`<button class="btn btn-primary" id="btn-np">+ Nuevo Producto</button>`;
+    setTimeout(()=>{ $('btn-np')?.addEventListener('click',()=>openProdForm()); },0);
+  }
+  try{
+    ST.data.prod=await loadSh(SH.PROD);
+    const rows=ST.data.prod;
+    ca.innerHTML=`
+      <div class="search-bar">
+        <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="ps" placeholder="Buscar SKU o nombre…"></div>
+        <select class="form-control" id="pfe" style="width:auto">
+          <option value="">Todos los estados</option>
+          ${EST_PROD.map(e=>`<option>${e}</option>`).join('')}
+        </select>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Catálogo de Productos</span><span class="text-muted text-sm" id="pcount">${rows.length} productos</span></div>
+        <div class="table-container"><table>
+          <thead><tr><th>SKU</th><th>Nombre</th><th>Categoría</th><th>Precio Base</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="ptbody"></tbody>
+        </table></div>
+      </div>`;
+    drawProdTable(rows);
+    function filter(){
+      const q=$('ps').value.toLowerCase(), est=$('pfe').value;
+      const f=rows.filter(r=>{
+        const sk=(r[C.PROD.SKU]||'').toLowerCase(), nm=(r[C.PROD.NOMBRE]||'').toLowerCase(), st=(r[C.PROD.ESTADO]||'').toLowerCase();
+        return (!q||sk.includes(q)||nm.includes(q))&&(!est||st===est);
+      });
+      drawProdTable(f);
+      $('pcount').textContent=`${f.length} de ${rows.length} productos`;
+    }
+    $('ps').oninput=filter; $('pfe').onchange=filter;
+  }catch(e){ ca.innerHTML=`<div class="card card-body"><p class="text-muted">Error: ${esc(e.message)}</p></div>`; }
+}
+
+function drawProdTable(rows){
+  const tb=$('ptbody'); if(!tb) return;
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📦</div><h3>Sin resultados</h3><p>No se encontraron productos</p></div></td></tr>`; return; }
+  const p=C.PROD;
+  tb.innerHTML=rows.map(r=>{
+    const sku=r[p.SKU]||'', nom=r[p.NOMBRE]||'', cat=r[p.CAT]||'', est=(r[p.ESTADO]||'').toLowerCase();
+    return `<tr>
+      <td><span class="sku-badge">${esc(sku)}</span></td>
+      <td><strong>${esc(nom)}</strong></td>
+      <td>${esc(cat)}</td>
+      <td>${fmtCLP(r[p.PRECIO])}</td>
+      <td>${estadoBadge(est)}</td>
+      <td><div class="flex gap-8">
+        <button class="btn btn-secondary btn-sm" onclick="openProdDetail('${esc(sku)}')">Ver</button>
+        ${canWrite(SH.PROD)?`<button class="btn btn-secondary btn-sm" onclick="openProdForm('${esc(sku)}')">Editar</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+window.openProdDetail = function(sku){
+  const p=C.PROD, r=ST.data.prod.find(x=>x[p.SKU]===sku);
+  if(!r){ toast('No encontrado','error'); return; }
+  Modal.open(`
+    <div class="modal-header"><span class="modal-title">Ficha de Producto</span><button class="btn-close" onclick="Modal.close()">×</button></div>
+    <div class="modal-body">
+      <div class="flex items-center gap-8 mb-14" style="flex-wrap:wrap">
+        <span class="sku-badge" style="font-size:14px;padding:4px 10px">${esc(r[p.SKU]||'')}</span>
+        <strong style="font-size:18px">${esc(r[p.NOMBRE]||'')}</strong>
+        ${estadoBadge((r[p.ESTADO]||'').toLowerCase())}
+      </div>
+      <div class="info-grid mb-14">
+        <div class="info-item"><label>Categoría</label><p>${esc(r[p.CAT]||'—')}</p></div>
+        <div class="info-item"><label>Precio Base</label><p>${fmtCLP(r[p.PRECIO])}</p></div>
+        <div class="info-item"><label>Peso</label><p>${r[p.PESO]?r[p.PESO]+' g':'—'}</p></div>
+        <div class="info-item"><label>Dimensiones</label><p>${esc(r[p.DIM]||'—')}</p></div>
+        <div class="info-item"><label>Fecha Creación</label><p>${fmtDate(r[p.FECHA])}</p></div>
+      </div>
+      ${r[p.DESC]?`<div class="form-group"><label class="form-label">Descripción</label><p style="font-size:13px">${esc(r[p.DESC])}</p></div>`:''}
+      ${r[p.ING]?`<div class="form-group"><label class="form-label">Ingredientes Activos</label><p style="font-size:13px">${esc(r[p.ING])}</p></div>`:''}
+      ${r[p.NOTAS]?`<div class="form-group"><label class="form-label">Notas</label><p style="font-size:13px">${esc(r[p.NOTAS])}</p></div>`:''}
+    </div>
+    <div class="modal-footer">
+      ${canWrite(SH.PROD)?`<button class="btn btn-primary" onclick="Modal.close();openProdForm('${esc(sku)}')">Editar</button>`:''}
+      <button class="btn btn-secondary" onclick="Modal.close()">Cerrar</button>
+    </div>
+  `,'modal-lg');
+};
+
+window.openProdForm = function(sku=null){
+  const p=C.PROD, isEdit=sku!==null;
+  const r=isEdit?ST.data.prod.find(x=>x[p.SKU]===sku):null;
+  const v=col=>r?(r[col]??''):'';
+  Modal.open(`
+    <div class="modal-header"><span class="modal-title">${isEdit?'Editar Producto':'Nuevo Producto'}</span><button class="btn-close" onclick="Modal.close()">×</button></div>
+    <div class="modal-body">
+      <form id="pform">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">SKU *</label>
+            <input class="form-control" name="sku" value="${esc(v(p.SKU))}" ${isEdit?'disabled':'required'} placeholder="JAB-TEV-480">
+            ${!isEdit?'<div class="form-hint">Formato [CAT]-[VAR]-[TAM]. No modificable después.</div>':''}
+          </div>
+          <div class="form-group"><label class="form-label">Nombre *</label><input class="form-control" name="nombre" value="${esc(v(p.NOMBRE))}" required></div>
+          <div class="form-group"><label class="form-label">Categoría *</label><input class="form-control" name="cat" value="${esc(v(p.CAT))}" required></div>
+          <div class="form-group"><label class="form-label">Precio Base</label><input type="number" class="form-control" name="precio" value="${v(p.PRECIO)}" min="0" step="1"></div>
+          <div class="form-group"><label class="form-label">Peso (g)</label><input type="number" class="form-control" name="peso" value="${v(p.PESO)}" min="0"></div>
+          <div class="form-group"><label class="form-label">Dimensiones</label><input class="form-control" name="dim" value="${esc(v(p.DIM))}" placeholder="20×10×5 cm"></div>
+          <div class="form-group">
+            <label class="form-label">Estado</label>
+            <select class="form-control" name="estado">${EST_PROD.map(e=>`<option ${v(p.ESTADO)===e?'selected':''}>${e}</option>`).join('')}</select>
+          </div>
+          <div class="form-group col-span-2"><label class="form-label">Descripción</label><textarea class="form-control" name="desc" rows="3">${esc(v(p.DESC))}</textarea></div>
+          <div class="form-group col-span-2"><label class="form-label">Ingredientes Activos</label><textarea class="form-control" name="ing" rows="2">${esc(v(p.ING))}</textarea></div>
+          <div class="form-group col-span-2"><label class="form-label">Notas</label><textarea class="form-control" name="notas" rows="2">${esc(v(p.NOTAS))}</textarea></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button>
+      <button class="btn btn-primary" id="spbtn">${isEdit?'Guardar Cambios':'Crear Producto'}</button>
+    </div>
+  `,'modal-lg');
+  $('spbtn').onclick=()=>saveProd(sku);
+};
+
+async function saveProd(existSku){
+  const form=qs('#pform'); if(!form.checkValidity()){ form.reportValidity(); return; }
+  const p=C.PROD, fd=new FormData(form);
+  const skuVal=(existSku||fd.get('sku').trim().toUpperCase());
+  if(!skuVal){ toast('SKU obligatorio','error'); return; }
+  const row=[skuVal,fd.get('nombre').trim(),fd.get('cat').trim(),fd.get('desc').trim(),fd.get('precio')||'',fd.get('peso')||'',fd.get('dim').trim(),fd.get('ing').trim(),fd.get('estado'),existSku?(ST.data.prod.find(r=>r[p.SKU]===existSku)?.[p.FECHA]||nowISO()):nowISO(),fd.get('notas').trim()];
+  const btn=$('spbtn'); btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    if(existSku){
+      const idx=ST.data.prod.findIndex(r=>r[p.SKU]===existSku);
+      if(idx<0) throw new Error('Producto no encontrado');
+      await shUpdate(`${SH.PROD}!A${idx+2}`,[row]);
+      ST.data.prod[idx]=row;
+      await logAct(SH.PROD,'EDITAR',skuVal,`Actualizado: ${row[p.NOMBRE]}`);
+      toast('Producto actualizado','success');
+    } else {
+      if(ST.data.prod.find(r=>r[p.SKU]===skuVal)){ toast('SKU ya existe','error'); btn.disabled=false; btn.textContent='Crear Producto'; return; }
+      await shAppend(SH.PROD,[row]);
+      ST.data.prod.push(row);
+      await logAct(SH.PROD,'CREAR',skuVal,`Nuevo: ${row[p.NOMBRE]}`);
+      toast('Producto creado','success');
+    }
+    Modal.close(); nav('productos');
+  }catch(e){ toast('Error: '+e.message,'error'); btn.disabled=false; btn.textContent=existSku?'Guardar Cambios':'Crear Producto'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODULE: CANALES
+// ═══════════════════════════════════════════════════════════
+async function renderCanal(ca){
+  setLoading(ca);
+  try{
+    [ST.data.prod, ST.data.canal] = await Promise.all([loadSh(SH.PROD), loadSh(SH.CANAL)]);
+    ca.innerHTML=`
+      <div class="search-bar">
+        <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="cs" placeholder="Buscar SKU, nombre o título…"></div>
+        <select class="form-control" id="cfc" style="width:auto"><option value="">Todos los canales</option>${CANALES.map(c=>`<option>${c}</option>`).join('')}</select>
+        ${canWrite(SH.CANAL)?`<button class="btn btn-primary" id="btn-nc">+ Agregar</button>`:''}
+      </div>
+      <div class="card"><div class="table-container"><table>
+        <thead><tr><th>SKU</th><th>Producto</th><th>Canal</th><th>Título</th><th>Precio Canal</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="ctbody"></tbody>
+      </table></div></div>`;
+    if(canWrite(SH.CANAL)) $('btn-nc')?.addEventListener('click',()=>openCanalForm());
+    drawCanalTable(ST.data.canal);
+    function filter(){
+      const q=$('cs').value.toLowerCase(), ch=$('cfc').value, cc=C.CANAL, cp=C.PROD;
+      const f=ST.data.canal.filter(r=>{
+        const sk=(r[cc.SKU]||'').toLowerCase(), ti=(r[cc.TITULO]||'').toLowerCase(), ca=(r[cc.CANAL]||'').toLowerCase();
+        const nm=(ST.data.prod.find(p=>p[cp.SKU]===r[cc.SKU])?.[cp.NOMBRE]||'').toLowerCase();
+        return (!q||sk.includes(q)||ti.includes(q)||nm.includes(q))&&(!ch||ca===ch);
+      });
+      drawCanalTable(f);
+    }
+    $('cs').oninput=filter; $('cfc').onchange=filter;
+  }catch(e){ ca.innerHTML=`<div class="card card-body"><p class="text-muted">Error: ${esc(e.message)}</p></div>`; }
+}
+
+function drawCanalTable(rows){
+  const tb=$('ctbody'); if(!tb) return;
+  const cc=C.CANAL, cp=C.PROD;
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🛒</div><h3>Sin datos</h3><p>No hay atributos de canal</p></div></td></tr>`; return; }
+  tb.innerHTML=rows.map(r=>{
+    const sku=r[cc.SKU]||'', prod=ST.data.prod.find(p=>p[cp.SKU]===sku), nm=prod?prod[cp.NOMBRE]:'—';
+    const realIdx=ST.data.canal.indexOf(r);
+    return `<tr>
+      <td><span class="sku-badge">${esc(sku)}</span></td>
+      <td>${esc(nm)}</td>
+      <td><span class="channel-pill">${esc(r[cc.CANAL]||'')}</span></td>
+      <td>${esc(r[cc.TITULO]||'—')}</td>
+      <td>${fmtCLP(r[cc.PRECIO])}</td>
+      <td>${canalBadge((r[cc.ESTADO]||'').toLowerCase())}</td>
+      <td>${canWrite(SH.CANAL)?`<button class="btn btn-secondary btn-sm" onclick="openCanalForm(${realIdx})">Editar</button>`:'<span class="text-muted text-sm">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.openCanalForm = function(idx=null){
+  const cc=C.CANAL, cp=C.PROD, isEdit=idx!==null, r=isEdit?ST.data.canal[idx]:null;
+  const v=col=>r?(r[col]??''):'';
+  Modal.open(`
+    <div class="modal-header"><span class="modal-title">${isEdit?'Editar Atributos de Canal':'Agregar Atributos de Canal'}</span><button class="btn-close" onclick="Modal.close()">×</button></div>
+    <div class="modal-body"><form id="cform">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">SKU *</label>
+          ${isEdit?`<input class="form-control" value="${esc(v(cc.SKU))}" disabled>`:`<select class="form-control" name="sku" required><option value="">Seleccionar…</option>${ST.data.prod.map(p=>`<option value="${esc(p[cp.SKU])}">${esc(p[cp.SKU])} — ${esc(p[cp.NOMBRE])}</option>`).join('')}</select>`}
+        </div>
+        <div class="form-group"><label class="form-label">Canal *</label>
+          ${isEdit?`<input class="form-control" value="${esc(v(cc.CANAL))}" disabled>`:`<select class="form-control" name="canal" required><option value="">Seleccionar…</option>${CANALES.map(c=>`<option>${c}</option>`).join('')}</select>`}
+        </div>
+        <div class="form-group col-span-2"><label class="form-label">Título en Canal</label><input class="form-control" name="titulo" value="${esc(v(cc.TITULO))}"></div>
+        <div class="form-group col-span-2"><label class="form-label">Descripción Canal</label><textarea class="form-control" name="desc" rows="3">${esc(v(cc.DESC))}</textarea></div>
+        <div class="form-group"><label class="form-label">Precio Canal</label><input type="number" class="form-control" name="precio" value="${v(cc.PRECIO)}" min="0" step="1"></div>
+        <div class="form-group"><label class="form-label">Estado Canal</label><select class="form-control" name="estado">${EST_CANAL.map(e=>`<option ${v(cc.ESTADO)===e?'selected':''}>${e}</option>`).join('')}</select></div>
+        <div class="form-group col-span-2"><label class="form-label">URL</label><input type="url" class="form-control" name="url" value="${esc(v(cc.URL))}" placeholder="https://…"></div>
+        <div class="form-group col-span-2"><label class="form-label">Imágenes (URLs separadas por coma)</label><textarea class="form-control" name="imgs" rows="2">${esc(v(cc.IMGS))}</textarea></div>
+        <div class="form-group col-span-2"><label class="form-label">Tags</label><input class="form-control" name="tags" value="${esc(v(cc.TAGS))}" placeholder="tag1, tag2"></div>
+      </div>
+    </form></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button><button class="btn btn-primary" id="scbtn">${isEdit?'Guardar Cambios':'Agregar'}</button></div>
+  `,'modal-lg');
+  $('scbtn').onclick=()=>saveCanal(idx);
+};
+
+async function saveCanal(idx){
+  const form=qs('#cform'); if(!form.checkValidity()){ form.reportValidity(); return; }
+  const cc=C.CANAL, fd=new FormData(form), isEdit=idx!==null, er=isEdit?ST.data.canal[idx]:null;
+  const skuVal=isEdit?er[cc.SKU]:fd.get('sku'), canalVal=isEdit?er[cc.CANAL]:fd.get('canal');
+  const row=[skuVal,canalVal,fd.get('titulo').trim(),fd.get('desc').trim(),fd.get('precio')||'',fd.get('url').trim(),fd.get('estado'),fd.get('imgs').trim(),fd.get('tags').trim(),nowISO()];
+  const btn=$('scbtn'); btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    if(isEdit){
+      await shUpdate(`${SH.CANAL}!A${idx+2}`,[row]);
+      ST.data.canal[idx]=row;
+      await logAct(SH.CANAL,'EDITAR',skuVal,`Canal ${canalVal} actualizado`);
+      toast('Canal actualizado','success');
+    } else {
+      if(ST.data.canal.find(r=>r[cc.SKU]===skuVal&&r[cc.CANAL]===canalVal)){ toast('Ya existe este SKU+canal','error'); btn.disabled=false; btn.textContent='Agregar'; return; }
+      await shAppend(SH.CANAL,[row]);
+      ST.data.canal.push(row);
+      await logAct(SH.CANAL,'CREAR',skuVal,`Nuevo canal ${canalVal}`);
+      toast('Canal agregado','success');
+    }
+    Modal.close(); nav('canales');
+  }catch(e){ toast('Error: '+e.message,'error'); btn.disabled=false; btn.textContent=isEdit?'Guardar Cambios':'Agregar'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODULE: INVENTARIO
+// ═══════════════════════════════════════════════════════════
+async function renderInv(ca){
+  setLoading(ca);
+  try{
+    [ST.data.prod, ST.data.inv, ST.data.kits]=await Promise.all([loadSh(SH.PROD),loadSh(SH.INV),loadSh(SH.KITS)]);
+    const ci=C.INV, ck=C.KITS, cp=C.PROD;
+
+    // Calculate kit stocks
+    const kitMap={};
+    ST.data.kits.forEach(kr=>{
+      const ks=kr[ck.KSKU], cs=kr[ck.CSKU], qty=parseInt(kr[ck.QTY])||1;
+      const compStk=ST.data.inv.filter(r=>r[ci.SKU]===cs).reduce((s,r)=>s+(parseInt(r[ci.STOCK])||0),0);
+      const kmax=Math.floor(compStk/qty);
+      kitMap[ks]=(ks in kitMap)?Math.min(kitMap[ks],kmax):kmax;
+    });
+    const kitSkus=new Set(ST.data.kits.map(r=>r[ck.KSKU]));
+
+    const lowStock=ST.data.inv.filter(r=>{ const s=parseInt(r[ci.STOCK])||0, m=parseInt(r[ci.SMIN])||0; return m>0&&s<=m; }).length;
+    const totalSkus=new Set(ST.data.inv.map(r=>r[ci.SKU])).size;
+
+    ca.innerHTML=`
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">SKUs en inventario</div><div class="stat-value">${totalSkus}</div></div>
+        <div class="stat-card"><div class="stat-label">Líneas de stock</div><div class="stat-value">${ST.data.inv.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Alertas stock bajo</div><div class="stat-value" style="color:var(--danger)">${lowStock}</div></div>
+        <div class="stat-card"><div class="stat-label">Kits calculados</div><div class="stat-value">${kitSkus.size}</div></div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchInvTab('prod',this)">Productos</div>
+        <div class="tab" onclick="switchInvTab('kits',this)">Kits (Stock Calculado)</div>
+      </div>
+      <div id="inv-prod">
+        <div class="search-bar">
+          <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="is" placeholder="Buscar SKU o ubicación…"></div>
+          ${canWrite(SH.INV)?`<button class="btn btn-primary" id="btn-ni">+ Agregar Línea</button>`:''}
+        </div>
+        <div class="card"><div class="table-container"><table>
+          <thead><tr><th>SKU</th><th>Producto</th><th>Ubicación</th><th>Stock</th><th>Mín.</th><th>Estado</th><th>Última Act.</th>${canWrite(SH.INV)?'<th></th>':''}</tr></thead>
+          <tbody id="itbody"></tbody>
+        </table></div></div>
+      </div>
+      <div id="inv-kits" class="hidden">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Kits — Stock calculado desde componentes</span></div>
+          <div class="table-container"><table>
+            <thead><tr><th>Kit SKU</th><th>Nombre</th><th>Stock Disponible</th><th>Componentes</th></tr></thead>
+            <tbody id="kttbody"></tbody>
+          </table></div>
+        </div>
+      </div>`;
+
+    drawInvTable(ST.data.inv);
+    drawKitsTable(kitMap);
+    if(canWrite(SH.INV)) $('btn-ni')?.addEventListener('click',()=>openInvForm());
+    $('is').oninput=e=>{
+      const q=e.target.value.toLowerCase();
+      drawInvTable(ST.data.inv.filter(r=>{ const sk=(r[ci.SKU]||'').toLowerCase(), ub=(r[ci.UBIC]||'').toLowerCase(), nm=(ST.data.prod.find(p=>p[cp.SKU]===r[ci.SKU])?.[cp.NOMBRE]||'').toLowerCase(); return sk.includes(q)||ub.includes(q)||nm.includes(q); }));
+    };
+  }catch(e){ ca.innerHTML=`<div class="card card-body"><p class="text-muted">Error: ${esc(e.message)}</p></div>`; }
+}
+
+window.switchInvTab=function(tab,el){
+  document.querySelectorAll('#content-area .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  $('inv-prod').classList.toggle('hidden',tab!=='prod');
+  $('inv-kits').classList.toggle('hidden',tab!=='kits');
+};
+
+function drawInvTable(rows){
+  const tb=$('itbody'); if(!tb) return;
+  const ci=C.INV, cp=C.PROD;
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🏭</div><h3>Sin registros</h3><p>No hay datos de inventario</p></div></td></tr>`; return; }
+  tb.innerHTML=rows.map(r=>{
+    const sku=r[ci.SKU]||'', prod=ST.data.prod.find(p=>p[cp.SKU]===sku), nm=prod?prod[cp.NOMBRE]:'—';
+    const stk=parseInt(r[ci.STOCK])||0, mn=parseInt(r[ci.SMIN])||0;
+    const bc=mn>0&&stk<=0?'badge-danger':mn>0&&stk<=mn?'badge-warning':'badge-success';
+    const bl=stk<=0?'Sin stock':mn>0&&stk<=mn?'Stock bajo':'OK';
+    const ri=ST.data.inv.indexOf(r);
+    return `<tr>
+      <td><span class="sku-badge">${esc(sku)}</span></td>
+      <td>${esc(nm)}</td>
+      <td>${esc(r[ci.UBIC]||'—')}</td>
+      <td><strong>${stk}</strong></td>
+      <td>${mn||'—'}</td>
+      <td><span class="badge ${bc}">${bl}</span></td>
+      <td class="text-sm text-muted">${fmtDT(r[ci.ACT])}</td>
+      ${canWrite(SH.INV)?`<td><button class="btn btn-secondary btn-sm" onclick="openInvForm(${ri})">Actualizar</button></td>`:''}
+    </tr>`;
+  }).join('');
+}
+
+function drawKitsTable(kitMap){
+  const tb=$('kttbody'); if(!tb) return;
+  const ck=C.KITS, cp=C.PROD;
+  const ks=Object.keys(kitMap);
+  if(!ks.length){ tb.innerHTML=`<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">📦</div><h3>Sin kits</h3><p>No hay filas en la hoja KITS</p></div></td></tr>`; return; }
+  tb.innerHTML=ks.map(ksku=>{
+    const prod=ST.data.prod.find(p=>p[cp.SKU]===ksku), nm=prod?prod[cp.NOMBRE]:'—';
+    const stk=kitMap[ksku];
+    const comps=ST.data.kits.filter(r=>r[ck.KSKU]===ksku).map(r=>`${r[ck.CSKU]} ×${r[ck.QTY]}`).join(', ');
+    return `<tr>
+      <td><span class="sku-badge">${esc(ksku)}</span></td>
+      <td>${esc(nm)}</td>
+      <td><strong>${stk}</strong> <span class="badge ${stk>0?'badge-success':'badge-danger'}">${stk>0?'Disponible':'Sin stock'}</span></td>
+      <td class="text-sm text-muted">${esc(comps)}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.openInvForm=function(idx=null){
+  const ci=C.INV, cp=C.PROD, isEdit=idx!==null, r=isEdit?ST.data.inv[idx]:null;
+  const v=col=>r?(r[col]??''):'';
+  Modal.open(`
+    <div class="modal-header"><span class="modal-title">${isEdit?'Actualizar Stock':'Agregar Línea de Inventario'}</span><button class="btn-close" onclick="Modal.close()">×</button></div>
+    <div class="modal-body"><form id="iform">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">SKU *</label>
+          ${isEdit?`<input class="form-control" value="${esc(v(ci.SKU))}" disabled>`:`<select class="form-control" name="sku" required><option value="">Seleccionar…</option>${ST.data.prod.map(p=>`<option value="${esc(p[cp.SKU])}">${esc(p[cp.SKU])} — ${esc(p[cp.NOMBRE])}</option>`).join('')}</select>`}
+        </div>
+        <div class="form-group"><label class="form-label">Ubicación *</label><input class="form-control" name="ubic" value="${esc(v(ci.UBIC))}" required placeholder="Bodega Principal"></div>
+        <div class="form-group"><label class="form-label">Stock Actual *</label><input type="number" class="form-control" name="stock" value="${v(ci.STOCK)}" required min="0"></div>
+        <div class="form-group"><label class="form-label">Stock Mínimo</label><input type="number" class="form-control" name="smin" value="${v(ci.SMIN)}" min="0"></div>
+        <div class="form-group col-span-2"><label class="form-label">Notas</label><input class="form-control" name="notas" value="${esc(v(ci.NOTAS))}"></div>
+      </div>
+    </form></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button><button class="btn btn-primary" id="sibtn">${isEdit?'Actualizar Stock':'Agregar'}</button></div>
+  `,'modal-md');
+  $('sibtn').onclick=()=>saveInv(idx);
+};
+
+async function saveInv(idx){
+  const form=qs('#iform'); if(!form.checkValidity()){ form.reportValidity(); return; }
+  const ci=C.INV, fd=new FormData(form), isEdit=idx!==null, er=isEdit?ST.data.inv[idx]:null;
+  const skuVal=isEdit?er[ci.SKU]:fd.get('sku');
+  const row=[skuVal,fd.get('ubic').trim(),parseInt(fd.get('stock'))||0,fd.get('smin')||'',nowISO(),fd.get('notas').trim()];
+  const btn=$('sibtn'); btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    if(isEdit){
+      await shUpdate(`${SH.INV}!A${idx+2}`,[row]);
+      const oldS=er[ci.STOCK];
+      ST.data.inv[idx]=row;
+      await logAct(SH.INV,'ACTUALIZAR_STOCK',skuVal,`${oldS} → ${row[ci.STOCK]} en ${row[ci.UBIC]}`);
+      toast('Stock actualizado','success');
+    } else {
+      await shAppend(SH.INV,[row]);
+      ST.data.inv.push(row);
+      await logAct(SH.INV,'CREAR',skuVal,`Nueva línea ${row[ci.UBIC]}: ${row[ci.STOCK]}`);
+      toast('Línea agregada','success');
+    }
+    Modal.close(); nav('inventario');
+  }catch(e){ toast('Error: '+e.message,'error'); btn.disabled=false; btn.textContent=isEdit?'Actualizar Stock':'Agregar'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODULE: CLIENTES B2B
+// ═══════════════════════════════════════════════════════════
+async function renderB2B(ca){
+  setLoading(ca);
+  if(canWrite(SH.B2B)){
+    $('topbar-actions').innerHTML=`<button class="btn btn-primary" id="btn-nb2b">+ Nuevo Cliente</button>`;
+    setTimeout(()=>{ $('btn-nb2b')?.addEventListener('click',()=>openB2BForm()); },0);
+  }
+  try{
+    ST.data.b2b=await loadSh(SH.B2B);
+    const cb=C.B2B, rows=ST.data.b2b;
+    const bySt={}; ETAPAS.forEach(e=>bySt[e]=0);
+    rows.forEach(r=>{ if(r[cb.ETAPA] in bySt) bySt[r[cb.ETAPA]]++; });
+    const totalV=rows.reduce((s,r)=>s+(parseFloat(r[cb.VALOR])||0),0);
+    ca.innerHTML=`
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total clientes</div><div class="stat-value">${rows.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Propuestas activas</div><div class="stat-value">${(bySt['Propuesta']||0)+(bySt['Negociación']||0)}</div></div>
+        <div class="stat-card"><div class="stat-label">Cerrados</div><div class="stat-value" style="color:var(--success)">${bySt['Cerrado']||0}</div></div>
+        <div class="stat-card"><div class="stat-label">Valor pipeline</div><div class="stat-value" style="font-size:18px">${fmtCLP(totalV)}</div></div>
+      </div>
+      <div class="search-bar">
+        <div class="search-wrap"><span class="search-icon">🔍</span><input class="search-input" id="bs" placeholder="Buscar empresa, contacto, email…"></div>
+        <select class="form-control" id="bfe" style="width:auto"><option value="">Todas las etapas</option>${ETAPAS.map(e=>`<option>${e}</option>`).join('')}</select>
+      </div>
+      <div class="card"><div class="table-container"><table>
+        <thead><tr><th>Empresa</th><th>Contacto</th><th>Canal</th><th>Etapa</th><th>Valor Est.</th><th>Próximo Paso</th><th>Fecha</th><th></th></tr></thead>
+        <tbody id="btbody"></tbody>
+      </table></div></div>`;
+    drawB2BTable(rows);
+    function filter(){
+      const q=$('bs').value.toLowerCase(), et=$('bfe').value;
+      const f=rows.filter(r=>{ const emp=(r[cb.EMP]||'').toLowerCase(), co=(r[cb.CONT]||'').toLowerCase(), em=(r[cb.EMAIL]||'').toLowerCase(); return (!q||emp.includes(q)||co.includes(q)||em.includes(q))&&(!et||r[cb.ETAPA]===et); });
+      drawB2BTable(f);
+    }
+    $('bs').oninput=filter; $('bfe').onchange=filter;
+  }catch(e){ ca.innerHTML=`<div class="card card-body"><p class="text-muted">Error: ${esc(e.message)}</p></div>`; }
+}
+
+function drawB2BTable(rows){
+  const tb=$('btbody'); if(!tb) return;
+  const cb=C.B2B;
+  if(!rows.length){ tb.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🤝</div><h3>Sin clientes</h3><p>No hay registros B2B</p></div></td></tr>`; return; }
+  tb.innerHTML=rows.map(r=>{
+    const ri=ST.data.b2b.indexOf(r), et=r[cb.ETAPA]||'';
+    return `<tr>
+      <td><strong>${esc(r[cb.EMP]||'—')}</strong></td>
+      <td><div>${esc(r[cb.CONT]||'—')}</div><div class="text-sm text-muted">${esc(r[cb.EMAIL]||'')}</div></td>
+      <td><span class="channel-pill">${esc(r[cb.CANAL]||'—')}</span></td>
+      <td><span class="stage-badge ${etapaClass(et)}">${esc(et)}</span></td>
+      <td>${fmtCLP(r[cb.VALOR])}</td>
+      <td class="text-sm">${esc(r[cb.PROX]||'—')}</td>
+      <td class="text-sm text-muted">${fmtDate(r[cb.FECHA])}</td>
+      <td>${canWrite(SH.B2B)?`<button class="btn btn-secondary btn-sm" onclick="openB2BForm(${ri})">Editar</button>`:'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+window.openB2BForm=function(idx=null){
+  const cb=C.B2B, isEdit=idx!==null, r=isEdit?ST.data.b2b[idx]:null;
+  const v=col=>r?(r[col]??''):'';
+  Modal.open(`
+    <div class="modal-header"><span class="modal-title">${isEdit?'Editar Cliente B2B':'Nuevo Cliente B2B'}</span><button class="btn-close" onclick="Modal.close()">×</button></div>
+    <div class="modal-body"><form id="bform">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Empresa *</label><input class="form-control" name="emp" value="${esc(v(cb.EMP))}" required></div>
+        <div class="form-group"><label class="form-label">Contacto *</label><input class="form-control" name="cont" value="${esc(v(cb.CONT))}" required></div>
+        <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control" name="email" value="${esc(v(cb.EMAIL))}"></div>
+        <div class="form-group"><label class="form-label">Teléfono</label><input class="form-control" name="tel" value="${esc(v(cb.TEL))}"></div>
+        <div class="form-group"><label class="form-label">Canal Preferido</label><select class="form-control" name="canal"><option value="">—</option>${CANALES.map(c=>`<option ${v(cb.CANAL)===c?'selected':''}>${c}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Etapa *</label><select class="form-control" name="etapa" required>${ETAPAS.map(e=>`<option ${v(cb.ETAPA)===e?'selected':''}>${e}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Valor Estimado</label><input type="number" class="form-control" name="valor" value="${v(cb.VALOR)}" min="0"></div>
+        <div class="form-group"><label class="form-label">Fecha Contacto</label><input type="date" class="form-control" name="fecha" value="${v(cb.FECHA)?String(v(cb.FECHA)).split('T')[0]:''}"></div>
+        <div class="form-group col-span-2"><label class="form-label">Próximo Paso</label><input class="form-control" name="prox" value="${esc(v(cb.PROX))}"></div>
+        <div class="form-group col-span-2"><label class="form-label">Notas</label><textarea class="form-control" name="notas" rows="3">${esc(v(cb.NOTAS))}</textarea></div>
+      </div>
+    </form></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="Modal.close()">Cancelar</button><button class="btn btn-primary" id="sbbtn">${isEdit?'Guardar Cambios':'Crear Cliente'}</button></div>
+  `,'modal-lg');
+  $('sbbtn').onclick=()=>saveB2B(idx);
+};
+
+async function saveB2B(idx){
+  const form=qs('#bform'); if(!form.checkValidity()){ form.reportValidity(); return; }
+  const cb=C.B2B, fd=new FormData(form), isEdit=idx!==null, er=isEdit?ST.data.b2b[idx]:null;
+  const idVal=isEdit?er[cb.ID]:genId();
+  const row=[idVal,fd.get('emp').trim(),fd.get('cont').trim(),fd.get('email').trim(),fd.get('tel').trim(),fd.get('canal'),fd.get('etapa'),fd.get('valor')||'',fd.get('fecha')||'',fd.get('prox').trim(),fd.get('notas').trim()];
+  const btn=$('sbbtn'); btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    if(isEdit){
+      await shUpdate(`${SH.B2B}!A${idx+2}`,[row]);
+      ST.data.b2b[idx]=row;
+      await logAct(SH.B2B,'EDITAR',idVal,`${row[cb.EMP]} → ${row[cb.ETAPA]}`);
+      toast('Cliente actualizado','success');
+    } else {
+      await shAppend(SH.B2B,[row]);
+      ST.data.b2b.push(row);
+      await logAct(SH.B2B,'CREAR',idVal,`Nuevo: ${row[cb.EMP]}`);
+      toast('Cliente creado','success');
+    }
+    Modal.close(); nav('b2b');
+  }catch(e){ toast('Error: '+e.message,'error'); btn.disabled=false; btn.textContent=isEdit?'Guardar Cambios':'Crear Cliente'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODULE: MARCA
+// ═══════════════════════════════════════════════════════════
+async function renderMarca(ca){
+  setLoading(ca);
+  try{
+    ST.data.marca=await loadSh(SH.MARCA);
+    const cm=C.MARCA, rows=ST.data.marca;
+    if(!rows.length){ ca.innerHTML=`<div class="empty-state"><div class="empty-icon">✨</div><h3>Sin contenido</h3><p>La hoja MARCA está vacía</p></div>`; return; }
+    ca.innerHTML=`
+      ${!ST.isFrancisco?`<div class="readonly-notice">⚠ La hoja Marca es de solo lectura para tu rol.</div>`:''}
+      <div style="display:grid;gap:14px">
+        ${rows.map(r=>`
+          <div class="card">
+            <div class="card-header"><span class="card-title">${esc(r[cm.SEC]||'Sin título')}</span></div>
+            <div class="card-body"><p style="font-size:13px;line-height:1.65" class="pre-wrap">${esc(r[cm.CONT]||'—')}</p></div>
+          </div>`).join('')}
+      </div>`;
+  }catch(e){ ca.innerHTML=`<div class="card card-body"><p class="text-muted">Error: ${esc(e.message)}</p></div>`; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MODULE: LOG
+// ═══════════════════════════════════════════════════════════
+async function renderLog(ca){
+  setLoading(ca);
+  try{
+    ST.data.log=await loadSh(SH.LOG);
+    const cl=C.LOG, rows=[...ST.data.log].reverse();
+    const acColors={CREAR:'badge-success',EDITAR:'badge-info',ACTUALIZAR_STOCK:'badge-info',ELIMINAR:'badge-danger'};
+    ca.innerHTML=`
+      <div class="card">
+        <div class="card-header"><span class="card-title">Registro de Acciones</span><span class="text-muted text-sm">${ST.data.log.length} entradas</span></div>
+        <div class="card-body" style="padding:0">
+          ${!rows.length
+            ?`<div class="empty-state"><div class="empty-icon">📋</div><h3>Sin registros</h3><p>No hay acciones aún</p></div>`
+            :`<div style="padding:0 18px">${rows.map(r=>`
+                <div class="log-entry">
+                  <div class="flex gap-8 items-center" style="flex-wrap:wrap;margin-bottom:3px">
+                    <span class="badge ${acColors[r[cl.ACC]]||'badge-gray'}">${esc(r[cl.ACC]||'—')}</span>
+                    <span class="sku-badge">${esc(r[cl.ID]||'—')}</span>
+                    <span class="text-sm text-muted">${esc(r[cl.HOJA]||'')}</span>
+                  </div>
+                  <div class="log-action-txt">${esc(r[cl.DET]||'—')}</div>
+                  <div class="log-detail">${esc(r[cl.USR]||'—')} · ${fmtDT(r[cl.TS])}</div>
+                </div>`).join('')}</div>`
+          }
+        </div>
+      </div>`;
+  }catch(e){ ca.innerHTML=`<div class="card card-body"><p class="text-muted">Error: ${esc(e.message)}</p></div>`; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('load',()=>{ initGAPI(); initGSI(); });
+</script>
+</body>
+</html>
