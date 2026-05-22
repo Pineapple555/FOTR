@@ -57,7 +57,7 @@ const APPS = [
     icon:         'package',
     iconBg:       '#EEF0FB',
     iconColor:    '#5C6BC0',
-    status:       'development',
+    status:       'active',
     url:          'wms.html',
     allowedRoles: ['admin'],
     allowedUsers: [],
