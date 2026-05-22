@@ -62,6 +62,19 @@ const APPS = [
     allowedRoles: ['admin'],
     allowedUsers: [],
   },
+    {
+    id:           'cerebro-intent',
+    name:         'CEREBRO INTENT',
+    description:  'Control datos base de INTENT.',
+    icon:         'mind',
+    iconBg:       '#EEF0FB',
+    iconColor:    '#5C6BC0',
+    status:       'active',
+    url:          'cerebro.html',
+    allowedRoles: ['admin'],
+    allowedUsers: [],
+  },
+   
   {
     id:           'dashboard-intent',
     name:         'Dashboard INTENT',
