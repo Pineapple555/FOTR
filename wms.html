@@ -261,7 +261,7 @@ code{font-family:monospace;font-size:12px}
       <span id="pg-title">Dashboard</span>
     </div>
     <div class="tb-r">
-      <button id="conn" class="conn off" onclick="GDrive.signIn()">● Metele Drive</button>
+      <button id="conn" class="conn off" onclick="connectDrive()">● Conectar Drive</button>
       <span class="ub" id="ubadge">FO</span>
     </div>
   </header>
@@ -269,7 +269,7 @@ code{font-family:monospace;font-size:12px}
   <!-- Banner que aparece cuando el token expira -->
   <div id="drive-banner">
     ⚠️ La sesión con Google Drive expiró. Los cambios se guardan localmente.
-    <button onclick="GDrive.signIn()">Reconectar</button>
+    <button onclick="connectDrive()">Reconectar</button>
     <button style="background:none;color:#92400E;font-weight:500;border:none;cursor:pointer;font-family:inherit;font-size:12px;margin-left:4px" onclick="hideBanner()">Ignorar</button>
   </div>
 
@@ -456,6 +456,8 @@ function hideBanner() {
 window.onGoogleLibraryLoad = () => GDrive.initClient();
 // También intentar si ya cargó
 if (window.google && window.google.accounts) GDrive.initClient();
+
+window.connectDrive = () => GDrive.signIn();
 
 // ═══════════════════════════════════════════════════
 // 2. INITIAL DATA
@@ -770,7 +772,7 @@ function vDashboard(){
     <div><h1 class="pg-title">Dashboard</h1><p class="pg-sub">${fdate(new Date())}</p></div>
   </div>
   ${!driveOk?`<div class="al al-w mb16">${ic('alert',15)}<div style="flex:1"><strong>Drive no conectado</strong><br><small>Los datos se guardan solo en este navegador. Conecta Drive para sincronizar entre dispositivos.</small></div>
-  <button class="btn bp btn-sm" onclick="GDrive.signIn()">${ic('dl',13)} Conectar</button></div>`:''}
+  <button class="btn bp btn-sm" onclick="connectDrive()">${ic('dl',13)} Conectar</button></div>`:''}
   <div class="stats">
     <div class="stat"><div class="stat-lbl">SKUs activos</div><div class="stat-val">${S.products.filter(p=>p.estado==='activo').length}</div><div class="stat-sub">productos</div></div>
     <div class="stat"><div class="stat-lbl">Unidades totales</div><div class="stat-val">${totalU.toLocaleString('es-CL')}</div><div class="stat-sub">en todas las ubicaciones</div></div>
