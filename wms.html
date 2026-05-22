@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root{
   --blue:#2563EB;--blue-dk:#1D4ED8;--blue-lt:#EFF6FF;
@@ -40,8 +42,10 @@ a{text-decoration:none;color:inherit}
 #menu-btn{background:none;border:none;padding:7px;border-radius:var(--r);color:var(--text3);display:flex;align-items:center;transition:background var(--ease)}
 #menu-btn:hover{background:var(--bg3)}
 #pg-title{font-size:15px;font-weight:600;color:var(--text)}
-.conn{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:3px 10px;border-radius:100px}
-.conn.on{background:var(--green-lt);color:var(--green)}.conn.off{background:var(--gray-lt);color:var(--gray)}
+.conn{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:3px 10px;border-radius:100px;border:none;font-family:inherit}
+.conn.on{background:var(--green-lt);color:var(--green);cursor:default}
+.conn.off{background:var(--gray-lt);color:var(--gray);cursor:pointer}
+.conn.connecting{background:var(--amber-lt);color:var(--amber);cursor:wait}
 .ub{background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:700;padding:4px 10px;border-radius:100px}
 
 /* ── SIDEBAR ── */
@@ -139,6 +143,11 @@ tbody tr:hover{background:var(--bg2)}
 .al-i{background:var(--blue-lt);border:1px solid #BFDBFE}
 .al-ok{background:var(--green-lt);border:1px solid #86EFAC}
 .al svg{flex-shrink:0;width:16px;height:16px;margin-top:1px}
+
+/* Drive banner */
+#drive-banner{display:none;background:var(--amber-lt);border-bottom:1px solid #FCD34D;padding:8px 20px;font-size:13px;color:#92400E;align-items:center;gap:10px;position:fixed;top:var(--th);left:var(--sw);right:0;z-index:35;transition:left var(--ease)}
+#drive-banner button{background:var(--amber);color:#fff;border:none;border-radius:var(--r);padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+@media(max-width:767px){#drive-banner{left:0;top:var(--th)}}
 
 /* Product selector */
 .ps-wrap{position:relative}
@@ -252,10 +261,18 @@ code{font-family:monospace;font-size:12px}
       <span id="pg-title">Dashboard</span>
     </div>
     <div class="tb-r">
-      <span id="conn" class="conn on">● Online</span>
+      <button id="conn" class="conn off" onclick="GDrive.signIn()">● Metele Drive</button>
       <span class="ub" id="ubadge">FO</span>
     </div>
   </header>
+
+  <!-- Banner que aparece cuando el token expira -->
+  <div id="drive-banner">
+    ⚠️ La sesión con Google Drive expiró. Los cambios se guardan localmente.
+    <button onclick="GDrive.signIn()">Reconectar</button>
+    <button style="background:none;color:#92400E;font-weight:500;border:none;cursor:pointer;font-family:inherit;font-size:12px;margin-left:4px" onclick="hideBanner()">Ignorar</button>
+  </div>
+
   <main id="main"></main>
 </div>
 
@@ -268,74 +285,131 @@ code{font-family:monospace;font-size:12px}
 // 1. CONFIG
 // ═══════════════════════════════════════════════════
 const APP_USER        = 'Francisco';
-const GDRIVE_FILE_ID  = '1gf-8ql_IQZsekCRKdIdsDI_sFwEMsBEe'; // wms_data.json en Drive
-const GDRIVE_FOLDER_ID= '1lHsKCuwJ59sov5MuWzjblH78L3WWVt03'; // Carpeta WMS INTENT
+const GDRIVE_FILE_ID  = '1gf-8ql_IQZsekCRKdIdsDI_sFwEMsBEe';
 const GOOGLE_CLIENT_ID= '702471036564-n8buttlfaejvb2qdboa8uf90amv2gbab.apps.googleusercontent.com';
+const DRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.file';
+const TOKEN_KEY       = 'wms_gd_token';
+const TOKEN_EXP_KEY   = 'wms_gd_exp';
 
 // ═══════════════════════════════════════════════════
-// 1b. GOOGLE DRIVE SYNC
+// 1b. GOOGLE DRIVE SYNC — Google Identity Services
 // ═══════════════════════════════════════════════════
 const GDrive = {
   token: null,
+  tokenClient: null,
   saveTimer: null,
+  _pendingSave: false,
 
-  // Inicia el flujo OAuth de Google
-  signIn(){
-    if(!GOOGLE_CLIENT_ID){
-      toast('Agrega tu GOOGLE_CLIENT_ID en el código primero','error');
+  // Inicializa el tokenClient de GIS (se llama cuando la librería carga)
+  initClient() {
+    if (!window.google || !window.google.accounts) return;
+    this.tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: DRIVE_SCOPE,
+      // callback se asigna en signIn() para poder mostrar toast según contexto
+      callback: () => {},
+    });
+    // Intentar restaurar token guardado
+    this._restoreToken();
+  },
+
+  // Guarda token en localStorage con timestamp de expiración (55 min)
+  _saveToken(token) {
+    this.token = token;
+    const exp = Date.now() + 55 * 60 * 1000; // 55 minutos
+    localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(TOKEN_EXP_KEY, String(exp));
+  },
+
+  // Restaura token si no ha expirado
+  _restoreToken() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const exp   = parseInt(localStorage.getItem(TOKEN_EXP_KEY) || '0');
+    if (token && Date.now() < exp) {
+      this.token = token;
+      App.updateDriveStatus();
+    } else {
+      // Token expirado o no existe — limpiar
+      this._clearToken();
+    }
+  },
+
+  _clearToken() {
+    this.token = null;
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXP_KEY);
+  },
+
+  isConnected() { return !!this.token; },
+
+  // Abre el popup de Google para pedir token
+  signIn() {
+    if (!this.tokenClient) {
+      // GIS todavía cargando — reintentar en 500ms
+      setTimeout(() => this.signIn(), 500);
       return;
     }
-    const params = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      redirect_uri: location.origin + location.pathname,
-      response_type: 'token',
-      scope: 'https://www.googleapis.com/auth/drive.file',
-      prompt: 'select_account',
-    });
-    location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params;
-  },
+    const connEl = document.getElementById('conn');
+    if (connEl) { connEl.className = 'conn connecting'; connEl.textContent = '● Conectando…'; }
 
-  // Detecta token en URL tras redirección OAuth
-  handleRedirect(){
-    const hash = new URLSearchParams(location.hash.slice(1));
-    const token = hash.get('access_token');
-    if(token){
-      this.token = token;
-      sessionStorage.setItem('gd_token', token);
-      history.replaceState(null,'',location.pathname);
-      return true;
-    }
-    const saved = sessionStorage.getItem('gd_token');
-    if(saved){ this.token = saved; return true; }
-    return false;
-  },
+    this.tokenClient.callback = async (response) => {
+      if (response.error) {
+        toast('No se pudo conectar con Google Drive', 'error');
+        App.updateDriveStatus();
+        return;
+      }
+      this._saveToken(response.access_token);
+      App.updateDriveStatus();
+      hideBanner();
+      toast('Conectando con Drive…', 'ok');
 
-  isConnected(){ return !!this.token; },
+      // Cargar datos desde Drive tras conectar
+      const data = await this.load();
+      if (data) {
+        S.products  = data.products  || S.products;
+        S.movements = data.movements || S.movements;
+        S.locations = data.locations || S.locations;
+        S.conteos   = data.conteos   || S.conteos;
+        Store._saveLocal();
+        Stock.dirty = true;
+        App.render();
+        App.updateAlertBadge();
+        toast('Datos cargados desde Drive ✓', 'success');
+      } else {
+        toast('Drive conectado. Guardando datos locales…', 'ok');
+        this.scheduleSave();
+      }
+    };
+
+    // prompt: '' = no pide cuenta si ya hay sesión activa en el navegador
+    // Si el token expiró, GIS lo detecta solo y pide reautenticación silenciosa
+    this.tokenClient.requestAccessToken({ prompt: '' });
+  },
 
   // Lee el JSON de Drive
-  async load(){
-    if(!this.token) return null;
+  async load() {
+    if (!this.token) return null;
     try {
       const r = await fetch(
         `https://www.googleapis.com/drive/v3/files/${GDRIVE_FILE_ID}?alt=media`,
-        { headers:{ Authorization:`Bearer ${this.token}` }}
+        { headers: { Authorization: `Bearer ${this.token}` } }
       );
-      if(r.status===401){ this.token=null; sessionStorage.removeItem('gd_token'); return null; }
-      if(!r.ok) return null;
+      if (r.status === 401) { this._handleExpired(); return null; }
+      if (!r.ok) return null;
       return await r.json();
-    } catch(e){ return null; }
+    } catch(e) { return null; }
   },
 
-  // Guarda el JSON en Drive (con debounce de 1.5s)
-  scheduleSave(){
+  // Guarda con debounce de 1.5s
+  scheduleSave() {
     clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(()=>this._doSave(), 1500);
+    this.saveTimer = setTimeout(() => this._doSave(), 1500);
   },
 
-  async _doSave(){
-    if(!this.token) return;
+  async _doSave() {
+    if (!this.token) return;
     const payload = {
-      _meta:{ app:'WMS INTENT', version:'1.0', lastSaved: new Date().toISOString(), savedBy: APP_USER },
+      _meta: { app: 'WMS INTENT', version: '1.0', lastSaved: new Date().toISOString(), savedBy: APP_USER },
       products:  S.products,
       movements: S.movements,
       locations: S.locations,
@@ -345,16 +419,43 @@ const GDrive = {
       const r = await fetch(
         `https://www.googleapis.com/upload/drive/v3/files/${GDRIVE_FILE_ID}?uploadType=media`,
         {
-          method:'PATCH',
-          headers:{ Authorization:`Bearer ${this.token}`, 'Content-Type':'application/json' },
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(payload, null, 2),
         }
       );
-      if(r.status===401){ this.token=null; sessionStorage.removeItem('gd_token'); toast('Sesión Drive expirada, vuelve a conectar','warn'); return; }
-      if(r.ok){ App.updateDriveStatus(); }
-    } catch(e){ /* sin conexión, localStorage sirve de respaldo */ }
+      if (r.status === 401) { this._handleExpired(); return; }
+      if (r.ok) App.updateDriveStatus();
+    } catch(e) { /* sin conexión — localStorage como respaldo */ }
+  },
+
+  // Maneja token expirado
+  _handleExpired() {
+    this._clearToken();
+    App.updateDriveStatus();
+    showBanner();
   },
 };
+
+// Banner de token expirado
+function showBanner() {
+  const b = document.getElementById('drive-banner');
+  if (b) b.style.display = 'flex';
+  // Ajustar padding del main para que no tape contenido
+  const m = document.getElementById('main');
+  if (m) m.style.paddingTop = '58px';
+}
+function hideBanner() {
+  const b = document.getElementById('drive-banner');
+  if (b) b.style.display = 'none';
+  const m = document.getElementById('main');
+  if (m) m.style.paddingTop = '';
+}
+
+// Callback global que llama GIS cuando carga
+window.onGoogleLibraryLoad = () => GDrive.initClient();
+// También intentar si ya cargó
+if (window.google && window.google.accounts) GDrive.initClient();
 
 // ═══════════════════════════════════════════════════
 // 2. INITIAL DATA
@@ -434,42 +535,43 @@ function ic(n,s=16){const d=ICS[n]||'';return `<svg width="${s}" height="${s}" v
 let S = {
   products:[], movements:[], locations:[], conteos:[],
   view:'dashboard', user:APP_USER,
-  conteoSid:null,   // active conteo session id
+  conteoSid:null,
   cfgTab:'productos',
   invF:{search:'',loc:'',cat:'',estado:'activo'},
   histF:{search:'',tipo:'',loc:'',canal:'',from:'',to:''},
 };
 
 // ═══════════════════════════════════════════════════
-// 6. PERSISTENCE (localStorage + Google Drive)
+// 6. PERSISTENCE
 // ═══════════════════════════════════════════════════
 const K = {p:'wms_products',m:'wms_movements',l:'wms_locations',c:'wms_conteos'};
 
 const Store = {
-  // Carga desde Drive si hay sesión, si no desde localStorage
   async load(){
-    if(GDrive.isConnected()){
-      toast('Cargando datos desde Google Drive…','ok');
-      const data = await GDrive.load();
-      if(data){
-        S.products  = data.products  || JSON.parse(JSON.stringify(INIT_PRODS));
-        S.movements = data.movements || [];
-        S.locations = data.locations || [...INIT_LOCS];
-        S.conteos   = data.conteos   || [];
-        // Reflejar en localStorage como caché local
-        this._saveLocal();
-        Stock.dirty = true;
-        App.render();
-        App.updateDriveStatus();
-        toast('Datos cargados desde Drive ✓','success');
-        return;
-      }
-    }
-    // Fallback: localStorage
+    // Primero cargar desde localStorage (inmediato, sin esperar red)
     S.products  = JSON.parse(localStorage.getItem(K.p)||'null') || JSON.parse(JSON.stringify(INIT_PRODS));
     S.movements = JSON.parse(localStorage.getItem(K.m)||'null') || [];
     S.locations = JSON.parse(localStorage.getItem(K.l)||'null') || [...INIT_LOCS];
     S.conteos   = JSON.parse(localStorage.getItem(K.c)||'null') || [];
+    Stock.dirty = true;
+    App.render();
+    App.updateAlertBadge();
+
+    // Luego intentar Drive si hay token
+    if (GDrive.isConnected()) {
+      const data = await GDrive.load();
+      if (data) {
+        S.products  = data.products  || S.products;
+        S.movements = data.movements || S.movements;
+        S.locations = data.locations || S.locations;
+        S.conteos   = data.conteos   || S.conteos;
+        this._saveLocal();
+        Stock.dirty = true;
+        App.render();
+        App.updateAlertBadge();
+        toast('Datos sincronizados desde Drive ✓','success');
+      }
+    }
   },
   _saveLocal(){
     localStorage.setItem(K.p, JSON.stringify(S.products));
@@ -653,20 +755,22 @@ function bindPS(id, opts={}){
 }
 
 // ═══════════════════════════════════════════════════
-// 10. VIEWS
+// 10. VIEWS (sin cambios)
 // ═══════════════════════════════════════════════════
 
-// ── Dashboard ──────────────────────────────────────
 function vDashboard(){
   const alerts=Stock.alerts();
   const today=new Date().toISOString().slice(0,10);
   const todayM=S.movements.filter(m=>m.fechaHora.slice(0,10)===today);
   const lastM=[...S.movements].reverse().slice(0,10);
   const totalU=S.products.reduce((s,p)=>s+Stock.tot(p.sku),0);
+  const driveOk=GDrive.isConnected();
   return `
   <div class="pg-hdr flex fcb fca" style="flex-wrap:wrap;gap:10px">
     <div><h1 class="pg-title">Dashboard</h1><p class="pg-sub">${fdate(new Date())}</p></div>
   </div>
+  ${!driveOk?`<div class="al al-w mb16">${ic('alert',15)}<div style="flex:1"><strong>Drive no conectado</strong><br><small>Los datos se guardan solo en este navegador. Conecta Drive para sincronizar entre dispositivos.</small></div>
+  <button class="btn bp btn-sm" onclick="GDrive.signIn()">${ic('dl',13)} Conectar</button></div>`:''}
   <div class="stats">
     <div class="stat"><div class="stat-lbl">SKUs activos</div><div class="stat-val">${S.products.filter(p=>p.estado==='activo').length}</div><div class="stat-sub">productos</div></div>
     <div class="stat"><div class="stat-lbl">Unidades totales</div><div class="stat-val">${totalU.toLocaleString('es-CL')}</div><div class="stat-sub">en todas las ubicaciones</div></div>
@@ -690,7 +794,6 @@ function vDashboard(){
   </tbody></table></div>`:`<div class="empty">${ic('clock',36)}<p>Sin movimientos aún</p><small>Usa Entrada para registrar el primer ingreso</small></div>`}`;
 }
 
-// ── Inventario ─────────────────────────────────────
 function vInventario(){
   const f=S.invF, stk=Stock.compute();
   const cats=[...new Set(S.products.map(p=>p.categoria))];
@@ -737,7 +840,6 @@ function vInventario(){
   </tbody></table></div>`;
 }
 
-// ── Entrada ────────────────────────────────────────
 function vEntrada(){
   return `<div class="pg-hdr"><h1 class="pg-title">Entrada de stock</h1><p class="pg-sub">Registrar ingreso de productos</p></div>
   <div class="card" style="max-width:580px">
@@ -753,7 +855,6 @@ function vEntrada(){
   </form></div>`;
 }
 
-// ── Salida ─────────────────────────────────────────
 function vSalida(){
   return `<div class="pg-hdr"><h1 class="pg-title">Salida de stock</h1><p class="pg-sub">Registrar egreso de productos</p></div>
   <div class="card" style="max-width:580px">
@@ -771,7 +872,6 @@ function vSalida(){
   </form></div>`;
 }
 
-// ── Transferencia ──────────────────────────────────
 function vTransferencia(){
   const locOpts=S.locations.map(l=>`<option>${escH(l)}</option>`).join('');
   return `<div class="pg-hdr"><h1 class="pg-title">Transferencia</h1><p class="pg-sub">Mover stock entre ubicaciones</p></div>
@@ -789,7 +889,6 @@ function vTransferencia(){
   </form></div>`;
 }
 
-// ── Ajuste ─────────────────────────────────────────
 function vAjuste(){
   return `<div class="pg-hdr"><h1 class="pg-title">Ajuste de inventario</h1><p class="pg-sub">Corrección positiva o negativa de stock</p></div>
   <div class="card" style="max-width:580px">
@@ -811,7 +910,6 @@ function vAjuste(){
   </form></div>`;
 }
 
-// ── Conteo físico ──────────────────────────────────
 function vConteo(){
   if(S.conteoSid) return vConteoSession();
   return `<div class="flex fcb fca mb16" style="flex-wrap:wrap;gap:10px">
@@ -860,7 +958,6 @@ function vConteoSession(){
   </div>`;
 }
 
-// ── Historial ──────────────────────────────────────
 function vHistorial(){
   const f=S.histF;
   let movs=[...S.movements].reverse();
@@ -898,7 +995,6 @@ function vHistorial(){
   </tbody></table></div>`:`<div class="empty">${ic('clock',36)}<p>Sin movimientos con esos filtros</p></div>`}`;
 }
 
-// ── Configuración ──────────────────────────────────
 function vConfig(){
   return `<div class="pg-hdr"><h1 class="pg-title">Configuración</h1></div>
   <div class="tabs">
@@ -942,11 +1038,9 @@ function vCfgLoc(){
 }
 
 // ═══════════════════════════════════════════════════
-// 11. BIND (event handlers after render)
+// 11. BIND
 // ═══════════════════════════════════════════════════
 const B = {
-
-  // ── Inventario ──
   invFilter(){
     S.invF.search=$('inv-s')?.value||'';
     S.invF.loc=$('inv-l')?.value||'';
@@ -963,8 +1057,6 @@ const B = {
     });
     csvExport(rows,'inventario-'+new Date().toISOString().slice(0,10)+'.csv');
   },
-
-  // ── Entrada ──
   entrada(){
     const sel=bindPS('ep');
     $('f-ent')?.addEventListener('submit',e=>{
@@ -972,372 +1064,4 @@ const B = {
       const sku=sel.getSku(), qty=parseInt($('ep-qty')?.value||0), loc=$('ep-loc')?.value, ref=$('ep-ref')?.value?.trim(), nota=$('ep-nota')?.value?.trim();
       if(!sku) return toast('Selecciona un producto','error');
       const p=S.products.find(x=>x.sku===sku);
-      if(p?.estado==='inactivo') return toast('Producto inactivo — no se puede operar','error');
-      if(!qty||qty<=0) return toast('La cantidad debe ser mayor a 0','error');
-      if(!loc) return toast('Selecciona una ubicación destino','error');
-      Store.addMov({id:uid(),fechaHora:new Date().toISOString(),usuario:S.user,tipo:'ENTRADA',sku,barcode:p?.barcode||'',qty,ubicacion:loc,desde:'',hacia:'',canal:'',referencia:ref||'',nota:nota||'',motivo:'',sessionId:''});
-      toast(`✓ Entrada: +${qty} ${prodName(sku)} → ${loc}`,'success');
-      e.target.reset(); sel.clear();
-    });
-  },
-
-  // ── Salida ──
-  salida(){
-    const sel=bindPS('sp',{
-      onSelect(p){
-        const loc=$('sp-loc')?.value;
-        if(loc) B._updStkInfo('sp-stk-info',p.sku,loc);
-      }
-    });
-    $('sp-loc')?.addEventListener('change',()=>{
-      const sku=_sel['sp']?.getSku(), loc=$('sp-loc')?.value;
-      if(sku&&loc) B._updStkInfo('sp-stk-info',sku,loc);
-    });
-    $('sp-canal')?.addEventListener('change',()=>{
-      const merma=$('sp-canal')?.value==='Merma';
-      const lbl=$('sp-nota-lbl');
-      if(lbl) lbl.innerHTML='Nota'+(merma?' <span class="req">*</span> <small class="text-r">(obligatorio en Merma)</small>':'');
-    });
-    $('f-sal')?.addEventListener('submit',e=>{
-      e.preventDefault();
-      const sku=sel.getSku(), canal=$('sp-canal')?.value, loc=$('sp-loc')?.value, qty=parseInt($('sp-qty')?.value||0), ref=$('sp-ref')?.value?.trim(), nota=$('sp-nota')?.value?.trim();
-      if(!sku) return toast('Selecciona un producto','error');
-      const p=S.products.find(x=>x.sku===sku);
-      if(p?.estado==='inactivo') return toast('Producto inactivo','error');
-      if(!canal) return toast('Selecciona un canal','error');
-      if(!loc) return toast('Selecciona ubicación origen','error');
-      if(!qty||qty<=0) return toast('La cantidad debe ser mayor a 0','error');
-      if(canal==='Merma'&&!nota) return toast('La nota es obligatoria para Merma','error');
-      const avail=Stock.get(sku,loc);
-      if(qty>avail) return toast(`Stock insuficiente en ${loc}: disponible ${avail}`,'error');
-      Store.addMov({id:uid(),fechaHora:new Date().toISOString(),usuario:S.user,tipo:'SALIDA',sku,barcode:p?.barcode||'',qty,ubicacion:loc,desde:'',hacia:'',canal,referencia:ref||'',nota:nota||'',motivo:'',sessionId:''});
-      toast(`✓ Salida: -${qty} ${prodName(sku)} (${canal})`,'success');
-      e.target.reset(); sel.clear(); $('sp-stk-info').textContent='';
-    });
-  },
-
-  // ── Transferencia ──
-  transferencia(){
-    const sel=bindPS('tp',{onSelect(){B.trfUpdateStk()}});
-    $('f-trf')?.addEventListener('submit',e=>{
-      e.preventDefault();
-      const sku=sel.getSku(), from=$('tp-from')?.value, to=$('tp-to')?.value, qty=parseInt($('tp-qty')?.value||0), nota=$('tp-nota')?.value?.trim();
-      if(!sku) return toast('Selecciona un producto','error');
-      const p=S.products.find(x=>x.sku===sku);
-      if(p?.estado==='inactivo') return toast('Producto inactivo','error');
-      if(!from) return toast('Selecciona ubicación origen','error');
-      if(!to) return toast('Selecciona ubicación destino','error');
-      if(from===to) return toast('Origen y destino no pueden ser iguales','error');
-      if(!qty||qty<=0) return toast('La cantidad debe ser mayor a 0','error');
-      const avail=Stock.get(sku,from);
-      if(qty>avail) return toast(`Stock insuficiente en ${from}: disponible ${avail}`,'error');
-      Store.addMov({id:uid(),fechaHora:new Date().toISOString(),usuario:S.user,tipo:'TRANSFERENCIA',sku,barcode:p?.barcode||'',qty,ubicacion:'',desde:from,hacia:to,canal:'',referencia:'',nota:nota||'',motivo:'',sessionId:''});
-      toast(`✓ Transferencia: ${qty} ${prodName(sku)} → ${to}`,'success');
-      e.target.reset(); sel.clear(); $('tp-stk-info').textContent='';
-    });
-  },
-  trfUpdateStk(){
-    const sku=_sel['tp']?.getSku(), loc=$('tp-from')?.value;
-    if(sku&&loc) B._updStkInfo('tp-stk-info',sku,loc);
-  },
-
-  // ── Ajuste ──
-  ajuste(){
-    const sel=bindPS('ap',{onSelect(){B.ajUpdateStk()}});
-    $('ap-loc')?.addEventListener('change',B.ajUpdateStk);
-    $('f-aj')?.addEventListener('submit',e=>{
-      e.preventDefault();
-      const sku=sel.getSku(), tipo=$('ap-tipo')?.value, loc=$('ap-loc')?.value, qty=parseInt($('ap-qty')?.value||0), motivo=$('ap-motivo')?.value, nota=$('ap-nota')?.value?.trim();
-      if(!sku) return toast('Selecciona un producto','error');
-      const p=S.products.find(x=>x.sku===sku);
-      if(p?.estado==='inactivo') return toast('Producto inactivo','error');
-      if(!tipo) return toast('Selecciona tipo de ajuste','error');
-      if(!loc) return toast('Selecciona una ubicación','error');
-      if(!qty||qty<=0) return toast('La cantidad debe ser mayor a 0','error');
-      if(!motivo) return toast('El motivo es obligatorio','error');
-      if(!nota) return toast('La nota es obligatoria','error');
-      const signedQty=tipo==='neg'?-qty:qty;
-      if(tipo==='neg'){
-        const avail=Stock.get(sku,loc);
-        if(qty>avail) return toast(`Stock insuficiente en ${loc}: disponible ${avail}`,'error');
-      }
-      Store.addMov({id:uid(),fechaHora:new Date().toISOString(),usuario:S.user,tipo:'AJUSTE',sku,barcode:p?.barcode||'',qty:signedQty,ubicacion:loc,desde:'',hacia:'',canal:'',referencia:'',nota,motivo,sessionId:''});
-      toast(`✓ Ajuste ${tipo==='neg'?'-':'+'}${qty} ${prodName(sku)}`,'success');
-      e.target.reset(); sel.clear(); $('ap-stk-info').textContent='';
-    });
-  },
-  ajUpdateStk(){
-    const sku=_sel['ap']?.getSku(), loc=$('ap-loc')?.value;
-    if(sku&&loc) B._updStkInfo('ap-stk-info',sku,loc);
-  },
-
-  _updStkInfo(elId,sku,loc){
-    const el=$(elId); if(!el) return;
-    const avail=Stock.get(sku,loc), p=S.products.find(x=>x.sku===sku);
-    el.innerHTML=`Disponible en <strong>${escH(loc)}</strong>: <strong class="${Stock.cls(avail,p?.stockMinimo||0)}">${avail}</strong> unidades`;
-  },
-
-  // ── Conteo ──
-  newConteo(){
-    const locOpts=S.locations.map(l=>`<option>${escH(l)}</option>`).join('');
-    openModal('Nueva sesión de conteo',`
-      <div class="fr"><label class="fl">Nombre de la sesión <span class="req">*</span></label><input type="text" id="cnt-nom" class="fc" placeholder="Ej: Conteo Enero 2025"></div>
-      <div class="fr"><label class="fl">Ubicación a contar <span class="req">*</span></label><select id="cnt-loc" class="fc"><option value="">Seleccionar…</option>${locOpts}</select></div>
-    `,()=>{
-      const nom=$('cnt-nom')?.value?.trim(), loc=$('cnt-loc')?.value;
-      if(!nom) return toast('Ingresa un nombre para la sesión','error');
-      if(!loc) return toast('Selecciona una ubicación','error');
-      const stk=Stock.compute();
-      const items=S.products.filter(p=>p.estado==='activo').map(p=>({sku:p.sku,esperado:stk[p.sku]?.[loc]||0,contado:null}));
-      const sess={id:uid(),nombre:nom,fecha:new Date().toISOString(),usuario:S.user,ubicacion:loc,estado:'abierta',items};
-      S.conteos.push(sess); Store.sc();
-      S.conteoSid=sess.id; closeModal(); App.render();
-    },'Crear sesión');
-  },
-  openConteo(id){S.conteoSid=id; App.render();},
-  updateConteo(sid,idx,val){
-    const c=S.conteos.find(x=>x.id===sid); if(!c||c.estado==='aplicada') return;
-    c.items[idx].contado=val===''?null:parseInt(val)||0;
-    Store.sc();
-  },
-  aplicarConteo(sid){
-    const c=S.conteos.find(x=>x.id===sid); if(!c||c.estado==='aplicada') return;
-    const diffs=c.items.filter(i=>i.contado!==null&&i.contado!==i.esperado);
-    if(!diffs.length){toast('Sin diferencias para aplicar','ok'); return;}
-    if(!confirm(`¿Aplicar ${diffs.length} ajuste(s) de inventario?`)) return;
-    diffs.forEach(it=>{
-      const diff=it.contado-it.esperado;
-      const p=S.products.find(x=>x.sku===it.sku);
-      Store.addMov({id:uid(),fechaHora:new Date().toISOString(),usuario:S.user,tipo:'AJUSTE',sku:it.sku,barcode:p?.barcode||'',qty:diff,ubicacion:c.ubicacion,desde:'',hacia:'',canal:'',referencia:`Conteo: ${c.nombre}`,nota:`Sesión ${c.nombre}`,motivo:'Conteo físico',sessionId:c.id});
-    });
-    c.estado='aplicada'; Store.sc();
-    toast(`✓ ${diffs.length} ajuste(s) aplicados`,'success');
-    App.render();
-  },
-
-  // ── Historial ──
-  histFilter(){
-    S.histF.search=$('h-s')?.value||'';
-    S.histF.tipo=$('h-t')?.value||'';
-    S.histF.loc=$('h-l')?.value||'';
-    S.histF.canal=$('h-c')?.value||'';
-    S.histF.from=$('h-from')?.value||'';
-    S.histF.to=$('h-to')?.value||'';
-    App.render();
-  },
-  exportHist(){
-    const rows=[['ID','Fecha/Hora','Usuario','Tipo','Producto','SKU','Barcode','Cantidad','Desde','Hacia/Ubic.','Canal','Referencia','Nota','Motivo','SessionId']];
-    [...S.movements].reverse().forEach(m=>rows.push([m.id,m.fechaHora,m.usuario,m.tipo,prodName(m.sku),m.sku,m.barcode||'',m.qty,m.desde||'',m.ubicacion||m.hacia||'',m.canal||'',m.referencia||'',m.nota||'',m.motivo||'',m.sessionId||'']));
-    csvExport(rows,'historial-'+new Date().toISOString().slice(0,10)+'.csv');
-  },
-
-  // ── Config ──
-  editProd(id){
-    const p=S.products.find(x=>x.id===id); if(!p) return;
-    const hasMov=S.movements.some(m=>m.sku===p.sku);
-    openModal(id?'Editar producto':'Nuevo producto',`
-      <div class="fgrid">
-        <div class="fr"><label class="fl">Nombre <span class="req">*</span></label><input id="m-nom" class="fc" value="${escH(p.nombre)}"></div>
-        <div class="fr"><label class="fl">Variante</label><input id="m-var" class="fc" value="${escH(p.variante)}"></div>
-        <div class="fr"><label class="fl">SKU <span class="req">*</span></label><input id="m-sku" class="fc" value="${escH(p.sku)}"${hasMov?' disabled title="SKU bloqueado: tiene movimientos"':''}>${hasMov?'<div class="fh">Bloqueado (tiene movimientos)</div>':''}</div>
-        <div class="fr"><label class="fl">Barcode / EAN</label><input id="m-bc" class="fc" value="${escH(p.barcode||'')}"></div>
-        <div class="fr"><label class="fl">Categoría</label><input id="m-cat" class="fc" value="${escH(p.categoria)}"></div>
-        <div class="fr"><label class="fl">Estado</label><select id="m-est" class="fc"><option value="activo"${p.estado==='activo'?' selected':''}>Activo</option><option value="inactivo"${p.estado==='inactivo'?' selected':''}>Inactivo</option></select></div>
-        <div class="fr"><label class="fl">Costo unitario</label><input type="number" id="m-costo" class="fc" value="${p.costoUnitario}" min="0"></div>
-        <div class="fr"><label class="fl">Precio venta</label><input type="number" id="m-pv" class="fc" value="${p.precioVenta}" min="0"></div>
-        <div class="fr"><label class="fl">Precio B2B</label><input type="number" id="m-pb2b" class="fc" value="${p.precioB2B}" min="0"></div>
-        <div class="fr"><label class="fl">Stock mínimo</label><input type="number" id="m-min" class="fc" value="${p.stockMinimo}" min="0"></div>
-      </div>
-    `,()=>{
-      const nom=$('m-nom')?.value?.trim();
-      if(!nom) return toast('El nombre es obligatorio','error');
-      const newSku=hasMov?p.sku:($('m-sku')?.value?.trim().toUpperCase()||p.sku);
-      if(!hasMov&&newSku!==p.sku&&S.products.some(x=>x.sku===newSku&&x.id!==id)) return toast('Ese SKU ya existe','error');
-      const bc=$('m-bc')?.value?.trim();
-      if(bc&&bc!==p.barcode&&S.products.some(x=>x.barcode===bc&&x.id!==id)) return toast('Ese barcode ya existe','error');
-      Object.assign(p,{nombre:nom,variante:$('m-var')?.value?.trim()||'',sku:newSku,barcode:bc||'',categoria:$('m-cat')?.value?.trim()||'',estado:$('m-est')?.value||'activo',costoUnitario:parseFloat($('m-costo')?.value)||0,precioVenta:parseFloat($('m-pv')?.value)||0,precioB2B:parseFloat($('m-pb2b')?.value)||0,stockMinimo:parseInt($('m-min')?.value)||0});
-      Store.sp(); closeModal(); toast('Producto guardado','success'); App.render();
-    });
-  },
-  newProd(){
-    openModal('Nuevo producto',`
-      <div class="fgrid">
-        <div class="fr"><label class="fl">Nombre <span class="req">*</span></label><input id="m-nom" class="fc" placeholder="Nombre del producto"></div>
-        <div class="fr"><label class="fl">Variante</label><input id="m-var" class="fc" placeholder="Tamaño, aroma…"></div>
-        <div class="fr"><label class="fl">SKU <span class="req">*</span></label><input id="m-sku" class="fc" placeholder="XXX-YYY-ZZZ"></div>
-        <div class="fr"><label class="fl">Barcode / EAN</label><input id="m-bc" class="fc" placeholder="7891234567890"></div>
-        <div class="fr"><label class="fl">Categoría</label><input id="m-cat" class="fc" placeholder="Aromatizadores…"></div>
-        <div class="fr"><label class="fl">Estado</label><select id="m-est" class="fc"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></div>
-        <div class="fr"><label class="fl">Costo unitario</label><input type="number" id="m-costo" class="fc" value="0" min="0"></div>
-        <div class="fr"><label class="fl">Precio venta</label><input type="number" id="m-pv" class="fc" value="0" min="0"></div>
-        <div class="fr"><label class="fl">Precio B2B</label><input type="number" id="m-pb2b" class="fc" value="0" min="0"></div>
-        <div class="fr"><label class="fl">Stock mínimo</label><input type="number" id="m-min" class="fc" value="5" min="0"></div>
-      </div>
-    `,()=>{
-      const nom=$('m-nom')?.value?.trim(), sku=$('m-sku')?.value?.trim().toUpperCase();
-      if(!nom) return toast('El nombre es obligatorio','error');
-      if(!sku) return toast('El SKU es obligatorio','error');
-      if(S.products.some(x=>x.sku===sku)) return toast('Ese SKU ya existe','error');
-      const bc=$('m-bc')?.value?.trim();
-      if(bc&&S.products.some(x=>x.barcode===bc)) return toast('Ese barcode ya existe','error');
-      S.products.push({id:uid(),nombre:nom,variante:$('m-var')?.value?.trim()||'',sku,barcode:bc||'',categoria:$('m-cat')?.value?.trim()||'General',estado:$('m-est')?.value||'activo',costoUnitario:parseFloat($('m-costo')?.value)||0,precioVenta:parseFloat($('m-pv')?.value)||0,precioB2B:parseFloat($('m-pb2b')?.value)||0,stockMinimo:parseInt($('m-min')?.value)||5});
-      Store.sp(); closeModal(); toast('Producto creado','success'); App.render();
-    });
-  },
-  newLoc(){
-    openModal('Nueva ubicación',`<div class="fr"><label class="fl">Nombre <span class="req">*</span></label><input id="m-loc" class="fc" placeholder="Ej: Depósito Norte"></div>`,()=>{
-      const nom=$('m-loc')?.value?.trim();
-      if(!nom) return toast('Ingresa un nombre','error');
-      if(S.locations.includes(nom)) return toast('Ya existe esa ubicación','error');
-      S.locations.push(nom); Store.sl(); closeModal(); toast('Ubicación creada','success'); App.render();
-    });
-  },
-  editLoc(old){
-    openModal('Editar ubicación',`<div class="fr"><label class="fl">Nuevo nombre <span class="req">*</span></label><input id="m-loc" class="fc" value="${escH(old)}"></div>`,()=>{
-      const nom=$('m-loc')?.value?.trim();
-      if(!nom) return toast('Ingresa un nombre','error');
-      if(nom!==old&&S.locations.includes(nom)) return toast('Ya existe esa ubicación','error');
-      const idx=S.locations.indexOf(old);
-      if(idx>=0) S.locations[idx]=nom;
-      // Update movements
-      S.movements.forEach(m=>{if(m.ubicacion===old)m.ubicacion=nom; if(m.desde===old)m.desde=nom; if(m.hacia===old)m.hacia=nom;});
-      Store.sl(); Store.sm(); closeModal(); toast('Ubicación actualizada','success'); App.render();
-    });
-  },
-  delLoc(loc){
-    const inUse=S.movements.some(m=>[m.ubicacion,m.desde,m.hacia].includes(loc));
-    if(inUse) return toast(`"${loc}" tiene movimientos y no se puede eliminar`,'error');
-    if(!confirm(`¿Eliminar ubicación "${loc}"?`)) return;
-    S.locations=S.locations.filter(l=>l!==loc); Store.sl(); toast('Ubicación eliminada','ok'); App.render();
-  },
-
-  // ── Conteo scan ──
-  bindConteoScan(){
-    const inp=$('cnt-scan'); if(!inp) return;
-    inp.addEventListener('keydown',e=>{
-      if(e.key!=='Enter') return;
-      e.preventDefault();
-      const v=inp.value.trim(); if(!v) return;
-      const p=S.products.find(x=>x.barcode===v||x.sku===v);
-      if(!p){toast(`Código "${v}" no encontrado`,'error'); return;}
-      const c=S.conteos.find(x=>x.id===S.conteoSid); if(!c) return;
-      const idx=c.items.findIndex(i=>i.sku===p.sku);
-      if(idx<0){toast('Producto no está en la sesión','warn'); return;}
-      const row=document.getElementById(`cnt-row-${p.sku}`);
-      if(row){row.scrollIntoView({behavior:'smooth',block:'center'}); const el=$(`cnt-${idx}`); if(el){el.focus();el.select();}}
-      inp.value='';
-    });
-  },
-
-};
-
-// ═══════════════════════════════════════════════════
-// 12. APP CONTROLLER
-// ═══════════════════════════════════════════════════
-const BIND_MAP = {
-  dashboard:()=>{},
-  inventario:()=>{},
-  entrada:B.entrada.bind(B),
-  salida:B.salida.bind(B),
-  transferencia:B.transferencia.bind(B),
-  ajuste:B.ajuste.bind(B),
-  conteo:()=>{if(S.conteoSid) B.bindConteoScan();},
-  historial:()=>{},
-  config:()=>{},
-};
-
-const App = {
-  nav(v){
-    S.view=v; if(v!=='conteo') S.conteoSid=null;
-    this.render(); this.closeSB();
-    const n=NAV.find(x=>x.id===v);
-    const el=$('pg-title'); if(el) el.textContent=n?.lbl||v;
-    $$('.sb-item').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
-    $$('.bn').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
-    // Update alerts badge
-    this.updateAlertBadge();
-  },
-  render(){
-    const fns={dashboard:vDashboard,inventario:vInventario,entrada:vEntrada,salida:vSalida,transferencia:vTransferencia,ajuste:vAjuste,conteo:vConteo,historial:vHistorial,config:vConfig};
-    const mc=$('main'); if(!mc) return;
-    mc.innerHTML=(fns[S.view]||vDashboard)();
-    if(BIND_MAP[S.view]) BIND_MAP[S.view]();
-  },
-  updateAlertBadge(){
-    const n=Stock.alerts().length;
-    $$('.sb-badge').forEach(b=>b.closest('.sb-item')?.dataset?.v==='dashboard'&&(b.textContent=n,b.style.display=n?'':'none'));
-  },
-  toggleSB(){document.body.classList.toggle('sbo')},
-  closeSB(){document.body.classList.remove('sbo')},
-  updateDriveStatus(){
-    const el=$('conn'); if(!el) return;
-    if(GDrive.isConnected()){
-      el.className='conn on';
-      el.innerHTML='● Drive';
-      el.title='Conectado a Google Drive';
-      el.style.cursor='default';
-      el.onclick=null;
-    } else {
-      el.className='conn off';
-      el.innerHTML='● Conectar Drive';
-      el.title='Haz clic para conectar con Google Drive';
-      el.style.cursor='pointer';
-      el.onclick=()=>GDrive.signIn();
-    }
-  },
-  updateConn(){
-    // Solo actualiza online/offline si no hay Drive conectado
-    if(GDrive.isConnected()) return;
-    const el=$('conn'); if(!el) return;
-    if(navigator.onLine){
-      el.className='conn off';
-      el.innerHTML='● Conectar Drive';
-      el.style.cursor='pointer';
-      el.onclick=()=>GDrive.signIn();
-    } else {
-      el.className='conn off';
-      el.textContent='● Offline';
-      el.style.cursor='default';
-      el.onclick=null;
-    }
-  },
-  buildSidebar(){
-    const nav=$('sbnav'); if(!nav) return;
-    nav.innerHTML=NAV.map(n=>{
-      if(n.sec) return `<div class="sb-sec">${n.sec}</div>`;
-      return `<button class="sb-item" data-v="${n.id}" onclick="App.nav('${n.id}')">${ic(n.ic,16)} ${n.lbl}${n.id==='dashboard'?`<span class="sb-badge" style="display:none">0</span>`:''}</button>`;
-    }).join('');
-  },
-  buildBotNav(){
-    const nav=$('bot-nav'); if(!nav) return;
-    nav.innerHTML=NAV.filter(n=>n.bot).map(n=>`<button class="bn" data-v="${n.id}" onclick="App.nav('${n.id}')">${ic(n.ic,20)}<span>${n.lbl}</span></button>`).join('');
-  },
-  init(){
-    // Detectar retorno desde OAuth
-    const justConnected = GDrive.handleRedirect();
-
-    $('menu-btn').innerHTML=ic('menu',20);
-    const ini=S.user.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const ub=$('ubadge'); if(ub) ub.textContent=ini;
-    this.buildSidebar();
-    this.buildBotNav();
-    this.updateDriveStatus();
-    window.addEventListener('online',()=>this.updateConn());
-    window.addEventListener('offline',()=>this.updateConn());
-    $('sb-overlay').addEventListener('click',()=>this.closeSB());
-    this.nav('dashboard');
-
-    // Cargar datos (async — desde Drive o localStorage)
-    Store.load().then(()=>{ this.render(); this.updateAlertBadge(); });
-
-    if(justConnected) toast('¡Google Drive conectado correctamente!','success');
-  },
-};
-
-// ═══════════════════════════════════════════════════
-// 13. BOOT
-// ═══════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded',()=>App.init());
-</script>
-</body>
-</html>
+      if(p?.estado==='inactivo'
