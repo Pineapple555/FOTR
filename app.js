@@ -17,8 +17,8 @@ const USERS = [
   {
     id:       'francisco',
     name:     'Francisco Osorio',
-    email:    'francisco',
-    password: 'fotr2024',
+    email:    'foz',
+    password: '1155',
     role:     'admin',
     initials: 'FO',
   },
@@ -76,13 +76,13 @@ const APPS = [
   },
    
   {
-    id:           'dashboard-intent',
-    name:         'Dashboard INTENT',
-    description:  'Métricas comerciales, ventas y operación.',
+    id:           'crm-intent',
+    name:         'CRM INTENT',
+    description:  'Seguimiento comercial y ventas.',
     icon:         'bar-chart-2',
     iconBg:       '#E8F5E9',
     iconColor:    '#2E7D32',
-    status:       'coming-soon',
+    status:       'active',
     url:          '#',
     allowedRoles: ['admin'],
     allowedUsers: [],
