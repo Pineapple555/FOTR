@@ -83,7 +83,7 @@ const APPS = [
     iconBg:       '#E8F5E9',
     iconColor:    '#2E7D32',
     status:       'active',
-    url:          '#',
+    url:          'https://script.google.com/macros/s/AKfycbwDROrJX3kmi0fpMLc9WrGzBgm-6yqPW_mmIabvq29zPJRZNyXIEyfikiO0Llt7cqeX/exec',
     allowedRoles: ['admin'],
     allowedUsers: [],
   },
